@@ -1,0 +1,17 @@
+/* Color Palette & Base Rules */
+:root {
+  --primary-color: #0056b3;  /* Deep high-contrast blue */
+  --secondary-color: #008080;/* Teal accent */
+  --background-color: #f8f9fa;/* Off-white background */
+  --text-color: #212529;      /* Very dark grey for easy reading */
+  --card-bg: #ffffff;        /* White card backgrounds */
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
