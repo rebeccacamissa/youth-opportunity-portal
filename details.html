@@ -6,19 +6,111 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> Detailed View </title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
   <header>
-    <h1>Youth Opportunity Portal</h1>
-  </header>
-  
-  <main>
-    <!-- Your page content goes here tomorrow! -->
-  </main>
+  <h1>Youth Opportunity Portal</h1>
+  <nav aria-label="Main Navigation">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="opportunities.html">Opportunities</a></li>
+      <li><a href="resources.html">Career Resources</a></li>
+      <li><a href="contact.html">Contact & Report</a></li>
+    </ul>
+  </nav>
+</header>
+
+  <!-- Detailed Opportunity Page Content -->
+ <main class="container page-content">
+  <nav aria-label="Breadcrumb" class="mb-3">
+    <a href="opportunities.html">← Back to Browse Opportunities</a>
+  </nav>
+
+  <article id="opportunity-details-container" class="details-card">
+    <!-- Header Summary Block -->
+    <header class="details-header">
+      <div class="details-title-group">
+        <h1 id="detail-title">Junior Web Developer Internship</h1>
+        <p class="company-name" id="detail-company">TechForward Academy</p>
+      </div>
+
+      <div class="countdown-widget" id="countdown-box">
+        <span class="countdown-label">Closing In:</span>
+        <span class="countdown-timer" id="live-countdown">--d --h --m</span>
+      </div>
+    </header>
+
+    <!-- Essential Metadata -->
+    <div class="details-meta-grid">
+      <div class="meta-item">
+        <strong>Stipend / Salary:</strong>
+        <span id="detail-stipend">R 6,500 / month</span>
+      </div>
+      <div class="meta-item">
+        <strong>Location:</strong>
+        <span id="detail-location">Cape Town, Western Cape</span>
+      </div>
+      <div class="meta-item">
+        <strong>Work Arrangement:</strong>
+        <span id="detail-arrangement">Hybrid (2 days remote)</span>
+      </div>
+      <div class="meta-item">
+        <strong>Closing Date:</strong>
+        <span id="detail-closing-date">31 October 2026</span>
+      </div>
+    </div>
+
+    <hr>
+
+    <!-- Job Description & Breakdown -->
+    <section class="details-section">
+      <h2>About the Role</h2>
+      <p id="detail-description">
+        Detailed breakdown of the role, responsibilities, daily tasks, and learning outcomes will render here dynamically.
+      </p>
+    </section>
+
+    <!-- Eligibility & Requirements -->
+    <section class="details-section">
+      <h2>Eligibility & Qualification Requirements</h2>
+      <ul id="detail-requirements">
+        <li>Grade 12 Certificate (Matric) with Mathematics or Mathematical Literacy.</li>
+        <li>Basic understanding of HTML, CSS, and web fundamentals.</li>
+        <li>South African Citizen aged between 18–35.</li>
+      </ul>
+    </section>
+
+    <!-- Required Application Checklist -->
+    <section class="details-section">
+      <h2>Required Application Checklist</h2>
+      <p>Ensure you have prepared clear copies of the following documents before applying:</p>
+      <ul class="checklist-docs">
+        <li>✔️ Updated CV (PDF format preferred)</li>
+        <li>✔️ Certified Copy of South African ID Document</li>
+        <li>✔️ Certified Copy of Grade 12 (Matric) Certificate</li>
+        <li>✔️ Academic Transcripts (if applicable)</li>
+      </ul>
+    </section>
+
+    <!-- Direct Application CTA -->
+    <div class="details-action-bar">
+      <a href="#" id="apply-button" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-lg">
+        Apply Directly on Official Portal ↗
+      </a>
+      <a href="contact.html?type=report" class="btn-link text-danger">Report this listing</a>
+    </div>
+  </article>
+</main>
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
   </footer>
+
+  <!-- Place right before the closing </body> tag -->
+  <script src="./js/main.js"></script>
+</body>
+</html>
+
 </body>
 </html>

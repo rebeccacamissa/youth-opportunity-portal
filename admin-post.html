@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Partner Portal</title>
+  <link rel="stylesheet" href="./css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <header>
+    <!-- Your Standard Site Header Navigation -->
+  </header>
+
+  <main class="container page-content">
+    <header class="page-header text-center">
+      <h1>Admin Partner Portal</h1>
+      <p>Post verified opportunities for South African youth.</p>
+    </header>
+
+    <!-- ADMIN SIGN-UP SECTION -->
+    <section class="admin-card" id="admin-auth-section">
+      <h2>Partner Organization Registration</h2>
+      <div id="admin-auth-feedback" class="mb-3"></div>
+
+      <form id="admin-signup-form">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="admin-company">Company / Organization Name</label>
+            <input type="text" id="admin-company" class="form-control" required placeholder="e.g. TechCorp SA">
+          </div>
+          <div class="form-group">
+            <label for="admin-sector">Sector</label>
+            <select id="admin-sector" class="form-control" required>
+              <option value="private">Private Sector</option>
+              <option value="ngo">NGO / Non-Profit</option>
+              <option value="government">Government / Public Sector</option>
+              <option value="education">Education & Training</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="admin-location">Head Office Location</label>
+            <input type="text" id="admin-location" class="form-control" required placeholder="e.g. Cape Town">
+          </div>
+          <div class="form-group">
+            <label for="admin-website">Company Website</label>
+            <input type="url" id="admin-website" class="form-control" required placeholder="https://company.com">
+          </div>
+        </div>
+
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="admin-email">Official Company Email</label>
+            <input type="email" id="admin-email" class="form-control" required placeholder="hr@company.com">
+            <small class="form-text text-muted">Must use official corporate domain (@company.com). Free email domains are restricted.</small>
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Password</label>
+            <input type="password" id="admin-password" class="form-control" required minlength="6">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Register Organization Account</button>
+      </form>
+    </section>
+
+    <!-- OPPORTUNITY POSTING FORM (Shown to Verified Admins) -->
+    <section class="admin-card mt-4" id="admin-post-section" style="display: none;">
+      <h2>Post a New Opportunity</h2>
+      <div id="post-feedback" class="mb-3"></div>
+
+      <form id="opportunity-post-form">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="post-title">Job / Opportunity Title</label>
+            <input type="text" id="post-title" class="form-control" required placeholder="e.g. Software Support Intern">
+          </div>
+          <div class="form-group">
+            <label for="post-category">Category</label>
+            <select id="post-category" class="form-control" required>
+              <option value="internship">Internship</option>
+              <option value="learnership">Learnership</option>
+              <option value="bursary">Bursary</option>
+              <option value="skill-programme">Skill Programme</option>
+              <option value="first-job">First Job</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-3">
+          <div class="form-group">
+            <label for="post-closing-date">Closing Date</label>
+            <input type="date" id="post-closing-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="post-location">Location</label>
+            <input type="text" id="post-location" class="form-control" required placeholder="e.g. Cape Town / Hybrid">
+          </div>
+          <div class="form-group">
+            <label for="post-stipend">Stipend / Salary</label>
+            <input type="text" id="post-stipend" class="form-control" placeholder="e.g. R6,000 / month">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="post-description">Full Job Description</label>
+          <textarea id="post-description" class="form-control" rows="4" required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="post-requirements">Requirements (One per line)</label>
+          <textarea id="post-requirements" class="form-control" rows="3" required placeholder="Matric Certificate&#10;Basic computer literacy&#10;Aged 18-35"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="post-apply-url">Direct Application URL</label>
+          <input type="url" id="post-apply-url" class="form-control" required placeholder="https://company.com/careers/apply">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Publish Listing</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="./js/supabase.js"></script>
+</body>
+</html>

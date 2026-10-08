@@ -6,19 +6,101 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> List of Opportubities </title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <header>
-    <h1>Youth Opportunity Portal</h1>
+ <header>
+  <h1>Youth Opportunity Portal</h1>
+  <nav aria-label="Main Navigation">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="opportunities.html">Opportunities</a></li>
+      <li><a href="resources.html">Career Resources</a></li>
+      <li><a href="contact.html">Contact & Report</a></li>
+    </ul>
+  </nav>
+</header>
+  <!--Browse Opportunities Page Content-->
+ <main class="container page-content">
+  <header class="page-header">
+    <h1>Browse Opportunities</h1>
+    <p>Filter through active positions and find your next step.</p>
   </header>
-  
-  <main>
-    <!-- Your page content goes here tomorrow! -->
-  </main>
+
+  <div class="opportunities-layout">
+    <!-- Sidebar Filters -->
+    <aside class="filters-sidebar" aria-label="Search and filter options">
+      <form id="filter-form" onsubmit="event.preventDefault();">
+        <div class="filter-group">
+          <label for="search-input"><strong>Search Keyword</strong></label>
+          <input type="search" id="search-input" class="form-control" placeholder="Job title, skill, company...">
+        </div>
+
+        <div class="filter-group">
+          <fieldset>
+            <legend><strong>Category</strong></legend>
+            <label class="checkbox-label">
+              <input type="checkbox" name="category" value="internship"> Internship
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="category" value="learnership"> Learnership
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="category" value="bursary"> Bursary
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="category" value="skill-programme"> Skill Programme
+            </label>
+          </fieldset>
+        </div>
+
+        <div class="filter-group">
+          <label for="location-select"><strong>Location</strong></label>
+          <select id="location-select" name="location" class="form-control">
+            <option value="">All Locations</option>
+            <option value="cape-town">Cape Town</option>
+            <option value="johannesburg">Johannesburg</option>
+            <option value="durban">Durban</option>
+            <option value="remote">Remote</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="experience-select"><strong>Experience Level</strong></label>
+          <select id="experience-select" name="experience" class="form-control">
+            <option value="">All Levels</option>
+            <option value="no-experience">No Prior Experience Required</option>
+            <option value="matriculant">Matriculant / Entry Level</option>
+            <option value="tertiary-student">Tertiary Student / Graduate</option>
+          </select>
+        </div>
+
+        <button type="reset" id="reset-filters-btn" class="btn btn-secondary w-100">Clear All Filters</button>
+      </form>
+    </aside>
+
+    <!-- Main Listings Grid -->
+    <section class="listings-main">
+      <div class="results-bar">
+        <span id="results-count">Loading results...</span>
+      </div>
+
+      <!-- Dynamic listings container rendered via JavaScript -->
+      <div id="opportunities-container" class="cards-grid">
+        <!-- Rendered dynamically by main.js -->
+      </div>
+    </section>
+  </div>
+</main>
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
   </footer>
+
+  <!-- Place right before the closing </body> tag -->
+  <script src="./js/main.js"></script>
+</body>
+</html>
+
 </body>
 </html>

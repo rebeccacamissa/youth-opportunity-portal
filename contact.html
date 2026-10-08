@@ -6,16 +6,75 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> Forms to submit enquiries or report listings </title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <header>
-    <h1>Youth Opportunity Portal</h1>
+ <header>
+  <h1>Youth Opportunity Portal</h1>
+  <nav aria-label="Main Navigation">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="opportunities.html">Opportunities</a></li>
+      <li><a href="resources.html">Career Resources</a></li>
+      <li><a href="contact.html">Contact & Report</a></li>
+    </ul>
+  </nav>
+</header>
+
+  <!-- Contact & Platform Feedback Page Content -->
+  <main class="container page-content">
+  <header class="page-header text-center">
+    <h1>Contact & Platform Feedback</h1>
+    <p>Have a question, suggestion, or feedback? Send us a message below.</p>
   </header>
-  
-  <main>
-    <!-- Your page content goes here tomorrow! -->
-  </main>
+
+  <div class="contact-card">
+    <form id="contact-form" action="#" method="POST">
+      <!-- Contact Category Selector -->
+      <div class="form-group">
+        <label for="contact-type"><strong>Select Enquiry Type</strong></label>
+        <select id="contact-type" name="type" class="form-control" required>
+          <option value="general">General Enquiry</option>
+          <option value="report">Report a Listing (Expired post or suspicious scam)</option>
+          <option value="suggest">Suggest an Opportunity</option>
+          <option value="feedback">Platform Feedback</option>
+        </select>
+      </div>
+
+      <!-- User Identification Fields -->
+      <div class="grid grid-2">
+        <div class="form-group">
+          <label for="contact-name">Your Full Name</label>
+          <input type="text" id="contact-name" name="name" class="form-control" required placeholder="e.g. Jane Doe">
+        </div>
+        <div class="form-group">
+          <label for="contact-email">Email Address</label>
+          <input type="email" id="contact-email" name="email" class="form-control" required placeholder="name@example.com">
+        </div>
+      </div>
+
+      <!-- Subject & Listing Specific Field -->
+      <div class="form-group">
+        <label for="contact-subject">Subject</label>
+        <input type="text" id="contact-subject" name="subject" class="form-control" required placeholder="Brief summary of your inquiry">
+      </div>
+
+      <div class="form-group" id="listing-link-group">
+        <label for="contact-listing-url">Listing URL / Title (Optional)</label>
+        <input type="url" id="contact-listing-url" name="listing_url" class="form-control" placeholder="https://domain.com/details.html?id=...">
+        <small class="form-text text-muted">If reporting a scam or expired listing, paste the link here.</small>
+      </div>
+
+      <!-- Message Textarea -->
+      <div class="form-group">
+        <label for="contact-message">Message</label>
+        <textarea id="contact-message" name="message" rows="5" class="form-control" required placeholder="Write your message here..."></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Submit Form</button>
+    </form>
+  </div>
+</main>
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>

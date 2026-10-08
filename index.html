@@ -1,23 +1,161 @@
 <!-- Home Page -->
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> Home Page </title>
-  <link rel="stylesheet" href="style.css">
+  <title>Youth Opportunity & Skills Portal | Home</title>
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <header>
-    <h1>Youth Opportunity Portal</h1>
-  </header>
-  
-  <main>
-    <!-- Your page content goes here tomorrow! -->
-  </main>
 
+  <!-- Accessible Skip Navigation Link -->
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <!-- Header & Primary Navigation -->
+  <header>
+    <div class="logo-container">
+      <h2>Youth Opportunity Portal</h2>
+    </div>
+    <nav aria-label="Main Navigation">
+      <ul>
+        <li><a href="index.html" class="active">Home</a></li>
+        <li><a href="opportunities.html">Opportunities</a></li>
+        <li><a href="resources.html">Career Resources</a></li>
+        <li><a href="contact.html">Contact & Report</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="container page-content">
+  <!-- Hero Section -->
+  <section class="hero-section text-center">
+    <div class="hero-content">
+      <h1>Discover Pathways to Your Future</h1>
+      <p class="lead-text">Find verified internships, learnerships, bursaries, and entry-level opportunities across South Africa.</p>
+      
+      <form class="hero-search-form" id="hero-search-form" action="opportunities.html" method="GET">
+        <div class="search-bar-group">
+          <input type="text" id="hero-search-input" name="search" placeholder="Search by title, skill, or keyword..." aria-label="Search opportunities">
+          <select id="hero-category-select" name="category" aria-label="Select category filter">
+            <option value="">All Categories</option>
+            <option value="internship">Internships</option>
+            <option value="learnership">Learnerships</option>
+            <option value="bursary">Bursaries</option>
+            <option value="first-job">First Jobs</option>
+            <option value="training">Training</option>
+            <option value="volunteering">Volunteering</option>
+          </select>
+          <button type="submit" class="btn btn-primary">Find Opportunities</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Anti-Scam Warning Banner -->
+  <section class="scam-warning-banner" role="region" aria-label="Safety Alert">
+    <div class="alert alert-warning d-flex align-items-center">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-body">
+        <strong>Protect Yourself Against Recruitment Scams:</strong> Legitimate employers will <em>never</em> ask you to pay money for job applications, medical checks, or placement fees. 
+        <a href="resources.html#anti-scam-guide" class="alert-link">Learn how to spot job scams →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Category Grid Cards -->
+  <section class="category-grid-section">
+    <h2>Explore Opportunity Types</h2>
+    <div class="grid grid-3">
+      <a href="opportunities.html?category=internship" class="category-card">
+        <div class="card-icon">💼</div>
+        <h3>Internships</h3>
+        <p>Gain practical workplace experience in your field of study.</p>
+      </a>
+
+      <a href="opportunities.html?category=learnership" class="category-card">
+        <div class="card-icon">🎓</div>
+        <h3>Learnerships</h3>
+        <p>Combine theoretical learning with hands-on work experience while earning a stipend.</p>
+      </a>
+
+      <a href="opportunities.html?category=bursary" class="category-card">
+        <div class="card-icon">📜</div>
+        <h3>Bursaries</h3>
+        <p>Funding options for high school graduates and university students.</p>
+      </a>
+
+      <a href="opportunities.html?category=first-job" class="category-card">
+        <div class="card-icon">🚀</div>
+        <h3>First Jobs</h3>
+        <p>Entry-level roles requiring minimal to no prior experience.</p>
+      </a>
+
+      <a href="opportunities.html?category=training" class="category-card">
+        <div class="card-icon">🛠️</div>
+        <h3>Training Programs</h3>
+        <p>Bootcamps, short courses, and skills development initiatives.</p>
+      </a>
+
+      <a href="opportunities.html?category=volunteering" class="category-card">
+        <div class="card-icon">🤝</div>
+        <h3>Volunteering</h3>
+        <p>Build your resume, network, and contribute to local community causes.</p>
+      </a>
+    </div>
+  </section>
+
+  <!-- Featured Opportunities & Deadline Widget Layout -->
+  <div class="home-main-layout">
+    <!-- Featured Opportunities (Populated via JS) -->
+    <section class="featured-section">
+      <div class="section-header">
+        <h2>Featured Opportunities</h2>
+        <a href="opportunities.html" class="view-all-link">View All Listings →</a>
+      </div>
+      <!-- Dynamic container where JavaScript renders featured cards -->
+      <div id="featured-container" class="cards-grid">
+        <!-- Rendered dynamically by main.js -->
+        <p class="loading-placeholder">Loading featured opportunities...</p>
+      </div>
+    </section>
+
+    <!-- Closing Soon Calendar Widget -->
+    <aside class="closing-soon-sidebar">
+      <div class="widget-card">
+        <h3>⏰ Closing Soon</h3>
+        <p class="widget-subtitle">Don't miss out on upcoming deadlines!</p>
+        <ul id="closing-soon-list" class="closing-soon-list">
+          <!-- Populated by JavaScript or fallback static placeholders -->
+          <li class="closing-item">
+            <span class="deadline-tag danger">2 Days Left</span>
+            <a href="details.html?id=1">Digital Skills Learnership 2026</a>
+            <small>Cape Town</small>
+          </li>
+          <li class="closing-item">
+            <span class="deadline-tag warning">5 Days Left</span>
+            <a href="details.html?id=2">Junior Web Dev Internship</a>
+            <small>Remote</small>
+          </li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</main>
+
+  <!-- Footer -->
   <footer>
-    <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
+    <p>&copy; 2026 Youth Opportunity & Skills Portal. Demonstration Project.</p>
+    <p>All information published is for educational and verification demonstration purposes.</p>
   </footer>
+
+  <script src="js/main.js"></script>
+
+<!-- Place right before the closing </body> tag -->
+  <script src="./js/main.js"></script>
+</body>
+</html>
+
 </body>
 </html>

@@ -1,0 +1,73 @@
+[
+  {
+    "id": 1,
+    "title": "Software Development Internship",
+    "organization": "Tech4Youth Academy",
+    "category": "Internship",
+    "location": "Cape Town",
+    "closingDate": "2026-11-30",
+    "experienceLevel": "Entry Level",
+    "shortDescription": "A 12-month paid practical internship focusing on web development.",
+    "fullDescription": "Join Tech4Youth for a hands-on learning experience building real-world web applications using modern web tools and technologies.",
+    "requirements": [
+      "Grade 12 / Matric Certificate",
+      "Basic understanding of web technologies",
+      "South African citizenship"
+    ],
+    "documents": [
+      "Certified Copy of ID",
+      "Updated CV",
+      "Academic Transcript"
+    ],
+    "applicationLink": "https://example.com/apply/tech4youth-internship",
+    "verifiedStatus": true,
+    "updatedDate": "2026-10-01"
+  },
+  {
+    "id": 2,
+    "title": "Digital Skills Learnership 2027",
+    "organization": "Cape Skills Development Trust",
+    "category": "Learnership",
+    "location": "Johannesburg",
+    "closingDate": "2026-12-15",
+    "experienceLevel": "No Experience",
+    "shortDescription": "NQF Level 4 accredited training program with monthly stipend.",
+    "fullDescription": "Full-time 12-month learnership covering digital literacy, business administration, and IT support fundamentals.",
+    "requirements": [
+      "Aged between 18 and 28",
+      "Currently unemployed",
+      "Grade 12 passed"
+    ],
+    "documents": [
+      "ID Copy",
+      "Proof of Address",
+      "Comprehensive CV"
+    ],
+    "applicationLink": "https://example.com/apply/digital-skills-2027",
+    "verifiedStatus": true,
+    "updatedDate": "2026-10-04"
+  },
+  {
+    "id": 3,
+    "title": "STEM Undergraduate Bursary",
+    "organization": "Future Leaders Fund",
+    "category": "Bursary",
+    "location": "Remote / Nationwide",
+    "closingDate": "2026-11-15",
+    "experienceLevel": "No Experience",
+    "shortDescription": "Comprehensive tuition and textbook funding for tertiary science students.",
+    "fullDescription": "Provides full tuition coverage, accommodation allowances, and personal mentorship for students pursuing STEM degrees.",
+    "requirements": [
+      "Accepted into a public South African university",
+      "Minimum 65% academic average in Grade 12 or 1st year university"
+    ],
+    "documents": [
+      "Proof of University Registration",
+      "Certified ID Copy",
+      "Proof of Household Income"
+    ],
+    "applicationLink": "https://example.com/apply/stem-bursary",
+    "verifiedStatus": true,
+    "updatedDate": "2026-09-28"
+  }
+]

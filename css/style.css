@@ -1,0 +1,152 @@
+/* ==========================================================================
+   1. COLOR VARIABLES & ACCESSIBILITY CONTRAST
+   ========================================================================== */
+:root {
+  /* High contrast color palette meeting WCAG standards */
+  --primary-color: #0056b3;     /* Darker blue for readable text & buttons */
+  --secondary-color: #f39c12;   /* Vibrant focus outline & highlight color */
+  --text-color: #212529;        /* High-contrast near-black standard text */
+  --bg-color: #f8f9fa;          /* Light background */
+  --card-bg: #ffffff;           /* Clean white card backgrounds */
+  --border-color: #dee2e6;      /* Subtle border color */
+  --error-color: #dc3545;       /* Red for validation errors */
+  --success-color: #198754;     /* Green for success messages */
+  --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-family);
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* ==========================================================================
+   2. ACCESSIBLE KEYBOARD NAVIGATION & FOCUS OUTLINES
+   ========================================================================== */
+
+/* Ensures interactive elements have clear, high-contrast outlines when focused via keyboard */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 3px solid var(--secondary-color) !important;
+  outline-offset: 2px;
+}
+
+/* Base button styling with smooth transitions */
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: #004085;
+}
+
+/* ==========================================================================
+   3. RESPONSIVE CSS GRID & FLEXBOX LAYOUTS
+   ========================================================================== */
+
+.container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* CSS Grid layout for multi-column form sections */
+.grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+/* Desktop default columns */
+@media (min-width: 768px) {
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Mobile responsive fallback: single column on screens smaller than 768px */
+@media (max-width: 767px) {
+  .grid-2,
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Card & Form Containers */
+.auth-card,
+.admin-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* Form Group Layouts */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.form-control {
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: var(--text-color);
+}
+
+.form-text {
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+}
+
+.text-muted {
+  color: #6c757d;
+}
+
+.text-danger {
+  color: var(--error-color);
+  font-weight: 600;
+}
+
+.text-success {
+  color: var(--success-color);
+  font-weight: 600;
+}
+
+.w-100 {
+  width: 100%;
+}

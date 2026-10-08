@@ -5,16 +5,109 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title> Career Tips and Scam warnings </title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
-  <header>
-    <h1>Youth Opportunity Portal</h1>
+ <header>
+  <h1>Youth Opportunity Portal</h1>
+  <nav aria-label="Main Navigation">
+    <ul>
+      <li><a href="index.html">Home</a></li>
+      <li><a href="opportunities.html">Opportunities</a></li>
+      <li><a href="resources.html">Career Resources</a></li>
+      <li><a href="contact.html">Contact & Report</a></li>
+    </ul>
+  </nav>
+</header>
+
+  <!-- Career Tips and Scam Warnings -->
+  <main class="container page-content">
+  <header class="page-header text-center">
+    <h1>Career Resources & Starter Toolkits</h1>
+    <p>Guides, application templates, and checklist tools to help you succeed.</p>
   </header>
-  
-  <main>
-    <!-- Your page content goes here tomorrow! -->
-  </main>
+
+  <!-- Interactive Pre-Submission Checklist -->
+  <section class="checklist-section">
+    <div class="widget-card">
+      <h2>📋 Pre-Submission Application Checklist</h2>
+      <p>Check off these tasks before submitting your application to maximize your chances:</p>
+      
+      <div class="interactive-checklist">
+        <label class="checklist-item">
+          <input type="checkbox"> CV is updated with relevant skills and formatted as a clear PDF.
+        </label>
+        <label class="checklist-item">
+          <input type="checkbox"> Cover letter is customized specifically to this role and company.
+        </label>
+        <label class="checklist-item">
+          <input type="checkbox"> All documents (ID, Matric certificate, academic transcripts) are certified.
+        </label>
+        <label class="checklist-item">
+          <input type="checkbox"> Email address used is professional (e.g., `firstname.lastname@gmail.com`).
+        </label>
+        <label class="checklist-item">
+          <input type="checkbox"> Verified that the opportunity is genuine and free of application fees.
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <!-- Guides & Articles Grid -->
+  <section class="resources-grid grid grid-2">
+    <!-- CV Writing Guide -->
+    <article class="resource-card">
+      <h3>📄 CV Writing Toolkit</h3>
+      <p>Learn how to structure an entry-level CV even if you have no prior work experience. Focus on projects, volunteer work, and soft skills.</p>
+      <ul>
+        <li>Keep formatting simple and ATS-friendly.</li>
+        <li>Highlight relevant achievements and coursework.</li>
+        <li>Save and submit your file as a PDF.</li>
+      </ul>
+    </article>
+
+    <!-- Cover Letters -->
+    <article class="resource-card">
+      <h3>✉️ Cover Letter Guide</h3>
+      <p>Draft concise cover letters that explain why you are interested in the program and how your qualifications match the role requirements.</p>
+      <ul>
+        <li>Address the hiring manager or organization directly.</li>
+        <li>Keep it concise (no more than 3 to 4 paragraphs).</li>
+      </ul>
+    </article>
+
+    <!-- Interview Preparation -->
+    <article class="resource-card">
+      <h3>🎙️ Interview Preparation</h3>
+      <p>Prepare for common interview questions using structured methods like the STAR framework (Situation, Task, Action, Result).</p>
+      <ul>
+        <li>Research the hiring company in advance.</li>
+        <li>Prepare 2–3 questions to ask the interviewer.</li>
+      </ul>
+    </article>
+
+    <!-- Professional Profiles -->
+    <article class="resource-card">
+      <h3>🌐 Professional Profiles</h3>
+      <p>Set up a professional online presence on platforms like LinkedIn to highlight your projects, skills, and educational background.</p>
+    </article>
+  </section>
+
+  <!-- Anti-Scam Guide Section -->
+  <section id="anti-scam-guide" class="scam-guide-section">
+    <div class="card alert-card">
+      <h2>🛡️ How to Spot & Avoid Recruitment Scams</h2>
+      <p>Protecting yourself while searching for opportunities is vital. Keep these key safety rules in mind:</p>
+      
+      <ul class="scam-checklist">
+        <li><strong>Never Pay Money:</strong> Legitimate companies or learnership providers will <em>never</em> ask you to pay an application fee, processing fee, or uniform fee.</li>
+        <li><strong>Verify Email Addresses:</strong> Official communications usually come from corporate domains (e.g., `@company.com`), not free webmail services like Gmail or Yahoo.</li>
+        <li><strong>Be Cautious with Messenger Interviews:</strong> Be wary of employers conducting whole hiring processes exclusively over WhatsApp or Telegram without a formal application or interview.</li>
+        <li><strong>Report Suspicions:</strong> If you find a scam listing on our platform, use the <a href="contact.html?type=report">Contact/Report page</a> to flag it immediately.</li>
+      </ul>
+    </div>
+  </section>
+</main>
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
