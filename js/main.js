@@ -1,5 +1,276 @@
 // State management to store fetched opportunities
 let globalOpportunities = [];
+let revealObserver;
+const savedOpportunityIds = loadSavedOpportunityIds();
+
+function loadSavedOpportunityIds() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('youth-portal-saved-opportunities') || '[]');
+    return new Set(Array.isArray(stored) ? stored.map(String) : []);
+  } catch (error) {
+    console.error('Saved opportunities could not be loaded from local storage:', error);
+    return new Set();
+  }
+}
+
+function persistSavedOpportunityIds() {
+  try {
+    localStorage.setItem('youth-portal-saved-opportunities', JSON.stringify([...savedOpportunityIds]));
+    return true;
+  } catch (error) {
+    console.error('Saved opportunities could not be stored in local storage:', error);
+    return false;
+  }
+}
+
+function initMobileNavigation() {
+  document.querySelectorAll('.nav-toggle').forEach(button => {
+    const navigation = document.getElementById(button.getAttribute('aria-controls'));
+    if (!navigation) return;
+
+    const closeMenu = () => {
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Open navigation menu');
+      navigation.classList.remove('is-open');
+    };
+
+    button.addEventListener('click', () => {
+      const isOpen = button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(isOpen));
+      button.setAttribute('aria-label', isOpen ? 'Close navigation menu' : 'Open navigation menu');
+      navigation.classList.toggle('is-open', isOpen);
+    });
+
+    navigation.addEventListener('click', event => {
+      if (event.target instanceof Element && event.target.closest('a')) closeMenu();
+    });
+
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || button.getAttribute('aria-expanded') !== 'true') return;
+      closeMenu();
+      button.focus();
+    });
+  });
+}
+
+function initSavedOpportunityControls() {
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest('[data-save-opportunity]');
+    if (!button) return;
+
+    const id = button.dataset.saveOpportunity;
+    const wasSaved = savedOpportunityIds.has(id);
+    if (wasSaved) savedOpportunityIds.delete(id);
+    else savedOpportunityIds.add(id);
+
+    if (!persistSavedOpportunityIds()) {
+      if (wasSaved) savedOpportunityIds.add(id);
+      else savedOpportunityIds.delete(id);
+      updateSavedCount();
+      return;
+    }
+
+    updateSavedCount();
+    if (document.getElementById('opportunities-container')) {
+      applyFilters();
+    } else {
+      renderCards(
+        globalOpportunities.filter(item => !calculateTimeRemaining(item.closingDate).isExpired).slice(0, 4),
+        'featured-container'
+      );
+    }
+  });
+
+  const savedOnly = document.getElementById('saved-only');
+  if (savedOnly) savedOnly.addEventListener('change', applyFilters);
+  updateSavedCount();
+}
+
+function updateSavedCount() {
+  const count = document.getElementById('saved-count');
+  if (count) count.textContent = `${savedOpportunityIds.size} saved`;
+}
+
+/**
+ * Initializes smooth scrolling, scroll reveals, pointer motion, and the sticky header.
+ */
+function initMotionEffects() {
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const header = document.querySelector('body > header');
+  const hero = document.querySelector('.hero-section');
+  let lenis;
+
+  if (!prefersReducedMotion && typeof window.Lenis === 'function') {
+    lenis = new window.Lenis({
+      smoothWheel: true,
+      easing: time => Math.min(1, 1.001 - Math.pow(2, -10 * time))
+    });
+
+    const animate = time => {
+      lenis.raf(time);
+      window.requestAnimationFrame(animate);
+    };
+
+    window.requestAnimationFrame(animate);
+  }
+
+  const updateScrollState = scrollPosition => {
+    if (header) {
+      header.classList.toggle('is-scrolled', scrollPosition > 50);
+    }
+
+    if (hero) {
+      const collapsePoint = hero.offsetTop + hero.offsetHeight * 0.35;
+      hero.classList.toggle('is-collapsing', scrollPosition > collapsePoint);
+    }
+  };
+
+  if (lenis) {
+    lenis.on('scroll', ({ scroll }) => updateScrollState(scroll));
+  } else {
+    window.addEventListener('scroll', () => updateScrollState(window.scrollY), { passive: true });
+  }
+  updateScrollState(window.scrollY);
+
+  initHeroParallax(hero, prefersReducedMotion);
+  initCardTilt(prefersReducedMotion);
+  initMobileNavigation();
+
+  const selector = [
+    '.page-header',
+    '.hero-section',
+    '.category-card',
+    '.featured-section',
+    '.closing-soon-sidebar',
+    '.widget-card',
+    '.resource-card',
+    '.scam-guide-section',
+    '.filters-sidebar',
+    '.opportunity-card',
+    '.details-card',
+    '.auth-card',
+    '.admin-card',
+    '.contact-card'
+  ].join(',');
+  if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+    document.querySelectorAll(selector).forEach(element => {
+      element.classList.add('reveal-on-scroll', 'visible');
+    });
+    return;
+  }
+
+  revealObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    });
+  }, {
+    threshold: 0.12,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  observeRevealElements(document);
+}
+
+function initHeroParallax(hero, prefersReducedMotion) {
+  if (!hero || prefersReducedMotion) return;
+
+  const cards = hero.querySelectorAll('.hero-spatial-card');
+  if (!cards.length) return;
+
+  hero.addEventListener('pointermove', event => {
+    if (event.pointerType === 'touch' || hero.classList.contains('is-collapsing')) return;
+
+    const bounds = hero.getBoundingClientRect();
+    const horizontal = (event.clientX - bounds.left) / bounds.width - 0.5;
+    const vertical = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+    cards.forEach((card, index) => {
+      const depth = (index + 1) * 5;
+      card.style.setProperty('--pointer-x', `${horizontal * depth}px`);
+      card.style.setProperty('--pointer-y', `${vertical * depth}px`);
+      card.style.setProperty('--pointer-rotate', `${horizontal * 5}deg`);
+    });
+  });
+
+  hero.addEventListener('pointerleave', () => {
+    cards.forEach(card => {
+      card.style.removeProperty('--pointer-x');
+      card.style.removeProperty('--pointer-y');
+      card.style.removeProperty('--pointer-rotate');
+    });
+  });
+}
+
+function initCardTilt(prefersReducedMotion) {
+  if (prefersReducedMotion) return;
+
+  document.addEventListener('pointermove', event => {
+    if (event.pointerType === 'touch' || !(event.target instanceof Element)) return;
+
+    const card = event.target.closest('.opportunity-card');
+    if (!card) return;
+
+    const bounds = card.getBoundingClientRect();
+    const horizontal = (event.clientX - bounds.left) / bounds.width;
+    const vertical = (event.clientY - bounds.top) / bounds.height;
+    const rotateX = (0.5 - vertical) * 12;
+    const rotateY = (horizontal - 0.5) * 12;
+
+    card.style.setProperty('--tilt-x', `${rotateX.toFixed(2)}deg`);
+    card.style.setProperty('--tilt-y', `${rotateY.toFixed(2)}deg`);
+    card.style.setProperty('--glow-x', `${(horizontal * 100).toFixed(2)}%`);
+    card.style.setProperty('--glow-y', `${(vertical * 100).toFixed(2)}%`);
+    card.classList.add('is-tilting');
+  });
+
+  document.addEventListener('pointerout', event => {
+    if (!(event.target instanceof Element)) return;
+    const card = event.target.closest('.opportunity-card');
+    if (!card || (event.relatedTarget instanceof Node && card.contains(event.relatedTarget))) return;
+
+    card.classList.remove('is-tilting');
+    card.style.removeProperty('--tilt-x');
+    card.style.removeProperty('--tilt-y');
+  });
+}
+
+function observeRevealElements(root) {
+  if (!revealObserver) return;
+
+  const selector = [
+    '.page-header',
+    '.hero-section',
+    '.category-card',
+    '.featured-section',
+    '.closing-soon-sidebar',
+    '.widget-card',
+    '.resource-card',
+    '.scam-guide-section',
+    '.filters-sidebar',
+    '.opportunity-card',
+    '.details-card',
+    '.auth-card',
+    '.admin-card',
+    '.contact-card'
+  ].join(',');
+
+  if (root.matches?.(selector) && !root.classList.contains('reveal-on-scroll')) {
+    root.classList.add('reveal-on-scroll');
+  }
+
+  root.querySelectorAll(selector).forEach(element => {
+    if (element.classList.contains('reveal-on-scroll')) return;
+    element.classList.add('reveal-on-scroll');
+    revealObserver.observe(element);
+  });
+
+  if (root.matches?.(selector) && !root.classList.contains('visible')) {
+    revealObserver.observe(root);
+  }
+}
 
 /**
  * 1. FETCH AND RENDER DATA
@@ -7,6 +278,16 @@ let globalOpportunities = [];
  * based on which page the user is currently visiting.
  */
 async function loadOpportunities() {
+  const path = window.location.pathname;
+  const usesOpportunityData =
+    path.endsWith('index.html') ||
+    path === '/' ||
+    path.endsWith('/') ||
+    path.endsWith('opportunities.html') ||
+    path.endsWith('details.html');
+
+  if (!usesOpportunityData) return;
+
   try {
     const response = await fetch('./data/opportunities.json');
     if (!response.ok) {
@@ -15,8 +296,6 @@ async function loadOpportunities() {
     globalOpportunities = await response.json();
 
     // Determine current page to initialize specific logic
-    const path = window.location.pathname;
-
     if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
       initHomePage();
     } else if (path.endsWith('opportunities.html')) {
@@ -41,14 +320,36 @@ function renderErrorMessage() {
       element.innerHTML = `<p class="error-text">Failed to load opportunities. Please try again later.</p>`;
     }
   });
+
+  const resultsCount = document.getElementById('results-count');
+  if (resultsCount) resultsCount.textContent = 'Opportunity results could not be loaded.';
+
+  const closingSoonList = document.getElementById('closing-soon-list');
+  if (closingSoonList) {
+    const message = document.createElement('li');
+    message.className = 'closing-item error-text';
+    message.textContent = 'Upcoming deadlines could not be loaded. Please try again later.';
+    closingSoonList.replaceChildren(message);
+  }
+
+  const detailsContainer = document.getElementById('opportunity-details-container');
+  if (detailsContainer) {
+    detailsContainer.replaceChildren();
+    const message = document.createElement('p');
+    message.className = 'error-text';
+    message.textContent = 'Opportunity details could not be loaded. Please try again later.';
+    detailsContainer.append(message);
+  }
 }
 
 /**
  * 2. HOME PAGE LOGIC (index.html)
  */
 function initHomePage() {
-  // Render top 4 items as featured
-  const featured = globalOpportunities.slice(0, 4);
+  // Keep expired opportunities out of the active featured feed.
+  const featured = globalOpportunities
+    .filter(item => !calculateTimeRemaining(item.closingDate).isExpired)
+    .slice(0, 4);
   renderCards(featured, 'featured-container');
 
   // Render "Closing Soon" widget items
@@ -69,7 +370,8 @@ function initBrowsePage() {
   if (searchInput && searchParam) searchInput.value = searchParam;
 
   if (categoryParam) {
-    const checkbox = document.querySelector(`input[name="category"][value="${categoryParam}"]`);
+    const checkbox = Array.from(document.querySelectorAll('input[name="category"]'))
+      .find(input => input.value.toLowerCase() === categoryParam.toLowerCase());
     if (checkbox) checkbox.checked = true;
   }
 
@@ -87,21 +389,29 @@ function setupFilterEventListeners() {
   const searchInput = document.getElementById('search-input');
   const locationSelect = document.getElementById('location-select');
   const experienceSelect = document.getElementById('experience-select');
+  const deadlineSelect = document.getElementById('deadline-select');
   const categoryCheckboxes = document.querySelectorAll('input[name="category"]');
-  const resetBtn = document.getElementById('reset-filters-btn');
+  const filterForm = document.getElementById('filter-form');
 
   if (searchInput) searchInput.addEventListener('input', applyFilters);
   if (locationSelect) locationSelect.addEventListener('change', applyFilters);
   if (experienceSelect) experienceSelect.addEventListener('change', applyFilters);
+  if (deadlineSelect) deadlineSelect.addEventListener('change', applyFilters);
 
   categoryCheckboxes.forEach(checkbox => {
     checkbox.addEventListener('change', applyFilters);
   });
 
-  if (resetBtn) {
-    resetBtn.addEventListener('click', () => {
-      document.getElementById('filter-form').reset();
-      applyFilters();
+  if (filterForm) {
+    filterForm.addEventListener('reset', () => window.setTimeout(applyFilters, 0));
+  }
+
+  const container = document.getElementById('opportunities-container');
+  if (container) {
+    container.addEventListener('click', event => {
+      if (!(event.target instanceof Element) || !event.target.closest('#reset-empty-filters')) return;
+      filterForm?.reset();
+      document.getElementById('search-input')?.focus();
     });
   }
 }
@@ -114,41 +424,57 @@ function applyFilters() {
   const searchVal = document.getElementById('search-input')?.value.toLowerCase().trim() || '';
   const locationVal = document.getElementById('location-select')?.value.toLowerCase() || '';
   const experienceVal = document.getElementById('experience-select')?.value.toLowerCase() || '';
+  const deadlineDays = Number(document.getElementById('deadline-select')?.value || 0);
+  const savedOnly = document.getElementById('saved-only')?.checked || false;
 
   // Get array of checked category values
   const checkedCategories = Array.from(
     document.querySelectorAll('input[name="category"]:checked')
-  ).map(cb => cb.value.toLowerCase());
+  ).map(cb => normalizeFacet(cb.value));
 
   const filtered = globalOpportunities.filter(item => {
     // Search match (title, company, or description)
     const matchesSearch =
       !searchVal ||
-      item.title.toLowerCase().includes(searchVal) ||
-      item.organization.toLowerCase().includes(searchVal) ||
-      (item.description && item.description.toLowerCase().includes(searchVal));
+        (item.title || '').toLowerCase().includes(searchVal) ||
+        (item.organization || '').toLowerCase().includes(searchVal) ||
+        (item.shortDescription || '').toLowerCase().includes(searchVal) ||
+        getOpportunityDescription(item).toLowerCase().includes(searchVal);
 
     // Category match
-    const matchesCategory =
-      checkedCategories.length === 0 ||
-      checkedCategories.includes(item.category.toLowerCase());
+    const normalizedCategory = normalizeFacet(item.category);
+    const matchesCategory = checkedCategories.length === 0 || checkedCategories.some(category => {
+      if (category === 'entry level jobs') {
+        return normalizeFacet(item.experienceLevel) === 'entry level' ||
+          normalizedCategory === 'first job';
+      }
+      return category === normalizedCategory;
+    });
 
     // Location match
     const matchesLocation =
-      !locationVal || item.location.toLowerCase().includes(locationVal);
+      !locationVal || normalizeFacet(item.location).includes(normalizeFacet(locationVal));
 
     // Experience match
-    const matchesExperience =
-      !experienceVal ||
-      (item.experienceLevel && item.experienceLevel.toLowerCase() === experienceVal);
+    const matchesExperience = !experienceVal ||
+      (experienceVal === 'matric / entry level'
+        ? normalizeFacet(item.experienceLevel) === 'entry level' ||
+          (Array.isArray(item.qualifications) && item.qualifications.some(value => /matric|grade\s*12/i.test(value)))
+        : normalizeFacet(item.experienceLevel) === normalizeFacet(experienceVal));
 
-    return matchesSearch && matchesCategory && matchesLocation && matchesExperience;
+    const deadline = calculateTimeRemaining(item.closingDate);
+    const matchesDeadline =
+      !deadline.isExpired &&
+      (!deadlineDays || (deadline.daysRemaining !== null && deadline.daysRemaining <= deadlineDays));
+    const matchesSaved = !savedOnly || savedOpportunityIds.has(String(item.id));
+
+    return matchesSearch && matchesCategory && matchesLocation && matchesExperience && matchesDeadline && matchesSaved;
   });
 
   // Update results counter text
   const resultsCountEl = document.getElementById('results-count');
   if (resultsCountEl) {
-    resultsCountEl.textContent = `Showing ${filtered.length} opportunity${filtered.length === 1 ? '' : 'ies'}`;
+    resultsCountEl.textContent = `Showing ${filtered.length} ${filtered.length === 1 ? 'opportunity' : 'opportunities'}`;
   }
 
   // Render cards or empty state
@@ -165,41 +491,56 @@ function renderCards(opportunities, targetContainerId) {
 
   // Empty state rendering
   if (opportunities.length === 0) {
+    const resetButton = targetContainerId === 'opportunities-container'
+      ? '<button type="button" class="btn btn-secondary" id="reset-empty-filters">Reset filters</button>'
+      : '';
     container.innerHTML = `
       <div class="empty-state">
         <p class="empty-title">No opportunities found</p>
         <p class="empty-text">Try adjusting your search terms or filters to find active positions.</p>
+        ${resetButton}
       </div>
     `;
+    observeRevealElements(container);
     return;
   }
 
   // Map opportunities into HTML markup
   container.innerHTML = opportunities
     .map(item => {
-      const countdown = calculateTimeRemaining(item.closingDate);
+      const deadline = calculateTimeRemaining(item.closingDate);
 
       return `
         <article class="opportunity-card">
           <div class="card-header">
-            <span class="category-badge">${escapeHTML(item.category)}</span>
-            <span class="deadline-tag ${countdown.isExpired ? 'danger' : 'warning'}">
-              ${countdown.label}
+            <span class="category-badge">${escapeHTML(item.category || 'Opportunity')}</span>
+            <span class="deadline-tag ${deadline.urgency}">
+              ${escapeHTML(deadline.label)}
             </span>
           </div>
-          <h3 class="card-title">${escapeHTML(item.title)}</h3>
-          <p class="card-org">${escapeHTML(item.organization)}</p>
+          <span class="demo-data-badge">Sample Opportunity / Demo Data</span>
+          <h3 class="card-title">${escapeHTML(item.title || 'Untitled opportunity')}</h3>
+          <p class="card-org">${escapeHTML(item.organization || 'Organisation not provided')}</p>
+          <p class="card-description">${escapeHTML(item.shortDescription || getOpportunityDescription(item) || 'Description not provided.')}</p>
           <ul class="card-details-list">
-            <li>📍 ${escapeHTML(item.location)}</li>
-            <li>💰 ${escapeHTML(item.stipend || 'Unspecified Stipend')}</li>
+            <li><i data-lucide="map-pin" aria-hidden="true"></i><span>${escapeHTML(item.location || 'Location not provided')}</span></li>
+            <li><i data-lucide="calendar" aria-hidden="true"></i><span>Closes: ${escapeHTML(formatDate(item.closingDate))}</span></li>
+            <li><i data-lucide="graduation-cap" aria-hidden="true"></i><span>Experience: ${escapeHTML(item.experienceLevel || 'Not specified')}</span></li>
+            <li><i data-lucide="coins" aria-hidden="true"></i><span>${escapeHTML(item.stipend || 'Unspecified Stipend')}</span></li>
           </ul>
           <div class="card-footer">
-            <a href="details.html?id=${item.id}" class="btn btn-secondary btn-sm">View Details</a>
+            <button type="button" class="btn btn-outline btn-sm" data-save-opportunity="${escapeHTML(item.id)}" aria-label="${savedOpportunityIds.has(String(item.id)) ? 'Remove from saved opportunities' : 'Save opportunity'}: ${escapeHTML(item.title || 'Untitled opportunity')}" aria-pressed="${savedOpportunityIds.has(String(item.id))}">
+              ${savedOpportunityIds.has(String(item.id)) ? 'Saved' : 'Save'}
+            </button>
+            <a href="details.html?id=${encodeURIComponent(item.id)}" class="btn btn-secondary btn-sm">View Details</a>
           </div>
         </article>
       `;
     })
     .join('');
+
+  observeRevealElements(container);
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /**
@@ -207,22 +548,28 @@ function renderCards(opportunities, targetContainerId) {
  * Calculates days left against closingDate string (e.g. "2026-10-31")
  */
 function calculateTimeRemaining(closingDateStr) {
-  if (!closingDateStr) return { label: 'No Deadline', isExpired: false };
+  if (!closingDateStr) return { label: 'No Deadline', isExpired: false, daysRemaining: null, urgency: 'neutral' };
 
-  const now = new Date();
-  const closingDate = new Date(closingDateStr);
-  const diffTime = closingDate - now;
-
-  if (diffTime <= 0) {
-    return { label: 'Expired', isExpired: true };
+  const closeDay = new Date(`${closingDateStr}T00:00:00`);
+  if (Number.isNaN(closeDay.getTime())) {
+    return { label: 'Date unavailable', isExpired: false, daysRemaining: null, urgency: 'neutral' };
   }
 
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const daysRemaining = Math.ceil((closeDay - today) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 1) {
-    return { label: '1 Day Left', isExpired: false };
+  if (daysRemaining < 0) {
+    return { label: 'Expired', isExpired: true, daysRemaining, urgency: 'danger' };
   }
-  return { label: `${diffDays} Days Left`, isExpired: false };
+
+  if (daysRemaining === 0) {
+    return { label: 'Closes Today', isExpired: false, daysRemaining, urgency: 'danger' };
+  }
+
+  const urgency = daysRemaining <= 7 ? 'danger' : daysRemaining <= 30 ? 'warning' : 'neutral';
+  const label = daysRemaining === 1 ? '1 Day Left' : `${daysRemaining} Days Left`;
+  return { label, isExpired: false, daysRemaining, urgency };
 }
 
 /**
@@ -240,7 +587,7 @@ function renderClosingSoonWidget() {
     .slice(0, 4);
 
   if (upcoming.length === 0) {
-    widgetContainer.innerHTML = '<li>No urgent deadlines.</li>';
+    widgetContainer.innerHTML = '<li class="closing-item closing-empty">No upcoming deadlines.</li>';
     return;
   }
 
@@ -248,13 +595,18 @@ function renderClosingSoonWidget() {
     .map(
       item => `
     <li class="closing-item">
-      <span class="deadline-tag danger">${item.timeInfo.label}</span>
-      <a href="details.html?id=${item.id}">${escapeHTML(item.title)}</a>
-      <small>${escapeHTML(item.location)}</small>
+      <span class="deadline-tag ${item.timeInfo.urgency}">${escapeHTML(item.timeInfo.label)}</span>
+      <a href="details.html?id=${encodeURIComponent(item.id)}">${escapeHTML(item.title)}</a>
+      <small>
+        <span><i data-lucide="map-pin" aria-hidden="true"></i>${escapeHTML(item.location || 'Location not provided')}</span>
+        <span><i data-lucide="calendar" aria-hidden="true"></i>Closes ${escapeHTML(formatDate(item.closingDate))}</span>
+      </small>
     </li>
   `
     )
     .join('');
+  observeRevealElements(widgetContainer);
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /**
@@ -282,34 +634,59 @@ function initDetailsPage() {
   // Populate Details elements
   setTextContent('detail-title', opportunity.title);
   setTextContent('detail-company', opportunity.organization);
+  setTextContent('detail-organization', opportunity.organization || 'Organisation not provided');
+  setTextContent('detail-category', opportunity.category || 'Not specified');
   setTextContent('detail-stipend', opportunity.stipend || 'N/A');
-  setTextContent('detail-location', opportunity.location);
-  setTextContent('detail-arrangement', opportunity.workArrangement || 'On-site');
-  setTextContent('detail-closing-date', opportunity.closingDate);
-  setTextContent('detail-description', opportunity.description);
+  setTextContent('detail-location', opportunity.location || 'Not specified');
+  setTextContent('detail-arrangement', opportunity.workArrangement || 'Not specified');
+  setTextContent('detail-closing-date', formatDate(opportunity.closingDate));
+  setTextContent('detail-description', getOpportunityDescription(opportunity) || 'A full description was not provided for this opportunity.');
+  setTextContent('detail-verification', opportunity.verifiedStatus ? 'Verified listing' : 'Not independently verified');
+  setTextContent('detail-updated', opportunity.updatedDate ? `Listing updated ${formatDate(opportunity.updatedDate)}` : 'Update date not provided');
 
   // Apply Live Countdown to timer element
+  const deadlineStatus = calculateTimeRemaining(opportunity.closingDate);
   const timerEl = document.getElementById('live-countdown');
   if (timerEl) {
-    const countdown = calculateTimeRemaining(opportunity.closingDate);
-    timerEl.textContent = countdown.label;
-    if (countdown.isExpired) {
-      timerEl.classList.add('text-danger');
-    }
+    timerEl.textContent = deadlineStatus.label;
+    timerEl.classList.toggle('text-danger', deadlineStatus.isExpired || deadlineStatus.urgency === 'danger');
+    const expiredNotice = document.getElementById('detail-expiry-notice');
+    if (expiredNotice) expiredNotice.hidden = !deadlineStatus.isExpired;
   }
 
-  // Render Requirements list
-  const reqList = document.getElementById('detail-requirements');
-  if (reqList && Array.isArray(opportunity.requirements)) {
-    reqList.innerHTML = opportunity.requirements
-      .map(req => `<li>${escapeHTML(req)}</li>`)
-      .join('');
+  renderDetailList('detail-requirements', opportunity.eligibility || opportunity.requirements, 'eligibility-note', 'Eligibility details were not supplied for this listing.');
+  renderDetailList('detail-qualifications', opportunity.qualifications, 'qualification-note', 'No separate qualification details were supplied; review the eligibility criteria above.');
+  renderDetailList('detail-documents', opportunity.documents, 'documents-note', 'No document checklist was supplied for this listing.');
+  const applicationSteps = Array.isArray(opportunity.applicationInstructions) && opportunity.applicationInstructions.length
+    ? opportunity.applicationInstructions
+    : [
+        'Confirm you meet the eligibility requirements and note the closing date.',
+        'Prepare the documents listed above.',
+        "Open the organisation's official application site and follow its current instructions.",
+        'Submit before the deadline and keep any confirmation for your records.'
+      ];
+  const hasSpecificApplicationSteps = Array.isArray(opportunity.applicationInstructions) && opportunity.applicationInstructions.length > 0;
+  renderDetailList('detail-application-steps', applicationSteps);
+  const applicationNote = document.getElementById('application-note');
+  if (applicationNote) {
+    applicationNote.hidden = hasSpecificApplicationSteps;
+    applicationNote.textContent = hasSpecificApplicationSteps
+      ? ''
+      : 'These general steps are guidance only; follow any instructions provided by the organisation.';
   }
 
-  // Apply Direct Application URL
+  // Only expose an application link when the listing supplies a real HTTP(S) URL.
   const applyBtn = document.getElementById('apply-button');
-  if (applyBtn && opportunity.applyUrl) {
-    applyBtn.href = opportunity.applyUrl;
+  const applyUnavailable = document.getElementById('apply-unavailable');
+  const applicationUrl = getSafeApplicationUrl(opportunity);
+  if (applyBtn && applicationUrl && !deadlineStatus.isExpired) {
+    applyBtn.href = applicationUrl;
+    applyBtn.hidden = false;
+  } else if (applyUnavailable) {
+    applyUnavailable.textContent = deadlineStatus.isExpired
+      ? 'This opportunity has passed its closing date. Confirm directly with the organisation before applying.'
+      : 'The organisation has not provided a verified application link for this demo listing.';
+    applyUnavailable.hidden = false;
   }
 }
 
@@ -319,6 +696,61 @@ function initDetailsPage() {
 function setTextContent(elementId, text) {
   const el = document.getElementById(elementId);
   if (el) el.textContent = text || '';
+}
+
+function renderDetailList(elementId, values, noteId, noteText) {
+  const list = document.getElementById(elementId);
+  const note = document.getElementById(noteId);
+  const items = Array.isArray(values) ? values.filter(Boolean) : [];
+
+  if (list) {
+    list.replaceChildren(...items.map(value => {
+      const item = document.createElement('li');
+      item.textContent = value;
+      return item;
+    }));
+  }
+
+  if (note) {
+    note.hidden = items.length > 0 || !noteText;
+    note.textContent = noteText;
+  }
+}
+
+function getOpportunityDescription(opportunity) {
+  return opportunity.fullDescription || opportunity.description || opportunity.shortDescription || '';
+}
+
+function getSafeApplicationUrl(opportunity) {
+  const candidate = opportunity.applicationLink || opportunity.applyUrl;
+  if (!candidate) return null;
+
+  try {
+    const url = new URL(candidate);
+    const hostname = url.hostname.toLowerCase();
+    if (!['http:', 'https:'].includes(url.protocol) || hostname === 'example.com' || hostname.endsWith('.example.com')) {
+      return null;
+    }
+    return url.href;
+  } catch {
+    return null;
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'Not provided';
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return 'Date unavailable';
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+}
+
+function normalizeFacet(value) {
+  return String(value || '').trim().toLowerCase().replace(/[-_]+/g, ' ');
 }
 
 function escapeHTML(str) {
@@ -332,4 +764,8 @@ function escapeHTML(str) {
 }
 
 // Initialize script when DOM is fully loaded
-document.addEventListener('DOMContentLoaded', loadOpportunities);
+document.addEventListener('DOMContentLoaded', () => {
+  initMotionEffects();
+  initSavedOpportunityControls();
+  loadOpportunities();
+});

@@ -10,7 +10,10 @@
 <body>
  <header>
   <h1>Youth Opportunity Portal</h1>
-  <nav aria-label="Main Navigation">
+  <button class="nav-toggle" type="button" aria-controls="portal-navigation" aria-expanded="false" aria-label="Open navigation menu">
+    <span></span><span></span><span></span>
+  </button>
+  <nav id="portal-navigation" aria-label="Main Navigation">
     <ul>
       <li><a href="index.html">Home</a></li>
       <li><a href="opportunities.html">Opportunities</a></li>
@@ -30,7 +33,7 @@
   <!-- Interactive Pre-Submission Checklist -->
   <section class="checklist-section">
     <div class="widget-card">
-      <h2>📋 Pre-Submission Application Checklist</h2>
+      <h2>📋 Application Documents Checklist</h2>
       <p>Check off these tasks before submitting your application to maximize your chances:</p>
       
       <div class="interactive-checklist">
@@ -91,6 +94,16 @@
       <h3>🌐 Professional Profiles</h3>
       <p>Set up a professional online presence on platforms like LinkedIn to highlight your projects, skills, and educational background.</p>
     </article>
+
+    <article class="resource-card">
+      <h3>🗂️ Preparing Application Documents</h3>
+      <p>Prepare a tailored CV, certified identity and qualification documents, current academic records, and any organisation-specific forms. Check each requirement against the official opportunity notice before sharing personal documents.</p>
+      <ul>
+        <li>Use clear, current copies and name files professionally.</li>
+        <li>Only share sensitive documents through an organisation's verified application channel.</li>
+        <li>Keep a copy of what you submitted and the closing date.</li>
+      </ul>
+    </article>
   </section>
 
   <!-- Anti-Scam Guide Section -->
@@ -111,5 +124,9 @@
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
+    <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
   </footer>
+  <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+  <script src="./js/main.js"></script>
 </body>
+</html>

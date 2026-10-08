@@ -9,7 +9,20 @@
 </head>
 <body>
   <header>
-    <!-- Your Standard Site Header Navigation -->
+    <div class="logo-container">
+      <h2>Youth Opportunity Portal</h2>
+    </div>
+    <button class="nav-toggle" type="button" aria-controls="portal-navigation" aria-expanded="false" aria-label="Open navigation menu">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="portal-navigation" aria-label="Main Navigation">
+      <ul>
+        <li><a href="index.html">Home</a></li>
+        <li><a href="opportunities.html">Opportunities</a></li>
+        <li><a href="resources.html">Career Resources</a></li>
+        <li><a href="contact.html">Contact & Report</a></li>
+      </ul>
+    </nav>
   </header>
 
   <main class="container page-content">
@@ -125,6 +138,13 @@
     </section>
   </main>
 
+  <footer>
+    <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
+    <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
+  </footer>
+
   <script src="./js/supabase.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
+  <script src="./js/main.js"></script>
 </body>
 </html>

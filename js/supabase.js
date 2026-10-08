@@ -2,7 +2,7 @@
 const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co'; 
 const SUPABASE_ANON_KEY = 'sb_publishable_jD_L6Kc2wWNecORjKzgkbw_-OXRdxO7';
 
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 /* ==========================================================================
    1. MULTI-STEP USER SIGN-UP & ONBOARDING LOGIC (auth.html)
@@ -75,7 +75,7 @@ async function handleStep2(event) {
 
   try {
     // 1. Authenticate with Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email: signupDataStep1.email,
       password: signupDataStep1.password
     });
@@ -85,7 +85,7 @@ async function handleStep2(event) {
     // 2. Insert Extended Profile Data into Supabase 'profiles' table
     if (authData.user) {
       profileData.id = authData.user.id;
-      const { error: profileError } = await supabase
+      const { error: profileError } = await supabaseClient
         .from('profiles')
         .insert([profileData]);
 
@@ -132,7 +132,7 @@ async function handleAdminSignUp(event) {
     feedbackEl.textContent = 'Registering admin partner...';
     
     // Register Admin via Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
       email,
       password,
       options: { data: { role: 'admin', companyName } }
@@ -142,7 +142,7 @@ async function handleAdminSignUp(event) {
 
     // Save Admin Organization Profile
     if (authData.user) {
-      const { error: orgError } = await supabase.from('organizations').insert([{
+      const { error: orgError } = await supabaseClient.from('organizations').insert([{
         id: authData.user.id,
         companyName,
         sector,
@@ -186,7 +186,7 @@ async function handlePostOpportunity(event) {
   try {
     feedbackEl.textContent = 'Publishing listing...';
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('opportunities')
       .insert([newOpportunity]);
 
@@ -201,15 +201,67 @@ async function handlePostOpportunity(event) {
   }
 }
 
+async function handleContactSubmission(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const feedbackEl = document.getElementById('contact-feedback');
+  const submitButton = form.querySelector('button[type="submit"]');
+  const formData = new FormData(form);
+
+  feedbackEl.className = 'mb-3';
+  feedbackEl.textContent = '';
+
+  if (!supabaseClient) {
+    feedbackEl.classList.add('text-danger');
+    feedbackEl.textContent = 'The contact service is unavailable. Please try again later.';
+    return;
+  }
+
+  submitButton.disabled = true;
+  feedbackEl.textContent = 'Sending your message...';
+
+  try {
+    const { error } = await supabaseClient.from('contact_submissions').insert({
+      submission_type: String(formData.get('type')).trim(),
+      name: String(formData.get('name')).trim(),
+      email: String(formData.get('email')).trim(),
+      subject: String(formData.get('subject')).trim(),
+      listing_url: String(formData.get('listing_url') || '').trim() || null,
+      message: String(formData.get('message')).trim()
+    });
+
+    if (error) throw error;
+
+    form.reset();
+    feedbackEl.className = 'mb-3 text-success';
+    feedbackEl.textContent = 'Thanks — your message was submitted successfully.';
+  } catch (error) {
+    console.error('Contact form submission failed:', error);
+    feedbackEl.className = 'mb-3 text-danger';
+    feedbackEl.textContent = 'We could not submit your message. Please try again later.';
+  } finally {
+    submitButton.disabled = false;
+  }
+}
+
 // Attach event listeners when DOM loads
 document.addEventListener('DOMContentLoaded', () => {
   const step1Form = document.getElementById('signup-step-1-form');
   const step2Form = document.getElementById('signup-step-2-form');
   const adminSignupForm = document.getElementById('admin-signup-form');
   const postForm = document.getElementById('opportunity-post-form');
+  const contactForm = document.getElementById('contact-form');
+  const contactType = document.getElementById('contact-type');
 
   if (step1Form) step1Form.addEventListener('submit', handleStep1);
   if (step2Form) step2Form.addEventListener('submit', handleStep2);
   if (adminSignupForm) adminSignupForm.addEventListener('submit', handleAdminSignUp);
   if (postForm) postForm.addEventListener('submit', handlePostOpportunity);
+  if (contactForm) contactForm.addEventListener('submit', handleContactSubmission);
+
+  const requestedContactType = new URLSearchParams(window.location.search).get('type');
+  if (contactType && ['general', 'report', 'suggest', 'feedback'].includes(requestedContactType)) {
+    contactType.value = requestedContactType;
+  }
 });

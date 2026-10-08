@@ -11,7 +11,10 @@
 <body>
  <header>
   <h1>Youth Opportunity Portal</h1>
-  <nav aria-label="Main Navigation">
+  <button class="nav-toggle" type="button" aria-controls="portal-navigation" aria-expanded="false" aria-label="Open navigation menu">
+    <span></span><span></span><span></span>
+  </button>
+  <nav id="portal-navigation" aria-label="Main Navigation">
     <ul>
       <li><a href="index.html">Home</a></li>
       <li><a href="opportunities.html">Opportunities</a></li>
@@ -51,6 +54,9 @@
             <label class="checkbox-label">
               <input type="checkbox" name="category" value="skill-programme"> Skill Programme
             </label>
+            <label class="checkbox-label">
+              <input type="checkbox" name="category" value="entry-level-jobs"> Entry-Level Jobs
+            </label>
           </fieldset>
         </div>
 
@@ -69,11 +75,25 @@
           <label for="experience-select"><strong>Experience Level</strong></label>
           <select id="experience-select" name="experience" class="form-control">
             <option value="">All Levels</option>
-            <option value="no-experience">No Prior Experience Required</option>
-            <option value="matriculant">Matriculant / Entry Level</option>
-            <option value="tertiary-student">Tertiary Student / Graduate</option>
+            <option value="no experience">No Prior Experience Required</option>
+            <option value="entry level">Entry Level</option>
+            <option value="matric / entry level">Matric / Entry Level</option>
           </select>
         </div>
+
+        <div class="filter-group">
+          <label for="deadline-select"><strong>Closing Date</strong></label>
+          <select id="deadline-select" name="deadline" class="form-control">
+            <option value="">Any closing date</option>
+            <option value="7">Closing within 7 days</option>
+            <option value="30">Closing within 30 days</option>
+          </select>
+        </div>
+
+        <label class="checkbox-label saved-filter-label">
+          <input type="checkbox" id="saved-only">
+          Show saved opportunities only
+        </label>
 
         <button type="reset" id="reset-filters-btn" class="btn btn-secondary w-100">Clear All Filters</button>
       </form>
@@ -82,11 +102,12 @@
     <!-- Main Listings Grid -->
     <section class="listings-main">
       <div class="results-bar">
-        <span id="results-count">Loading results...</span>
+        <span id="results-count" role="status" aria-live="polite">Loading results...</span>
+        <span id="saved-count" aria-live="polite"></span>
       </div>
 
       <!-- Dynamic listings container rendered via JavaScript -->
-      <div id="opportunities-container" class="cards-grid">
+      <div id="opportunities-container" class="cards-grid" aria-live="polite">
         <!-- Rendered dynamically by main.js -->
       </div>
     </section>
@@ -95,12 +116,15 @@
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
+    <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
   </footer>
 
   <!-- Place right before the closing </body> tag -->
+  <script src="https://unpkg.com/lucide@0.468.0"></script>
+  <script>
+    if (window.lucide) window.lucide.createIcons();
+  </script>
+  <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="./js/main.js"></script>
-</body>
-</html>
-
 </body>
 </html>

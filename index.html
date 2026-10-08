@@ -17,7 +17,10 @@
     <div class="logo-container">
       <h2>Youth Opportunity Portal</h2>
     </div>
-    <nav aria-label="Main Navigation">
+    <button class="nav-toggle" type="button" aria-controls="portal-navigation" aria-expanded="false" aria-label="Open navigation menu">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="portal-navigation" aria-label="Main Navigation">
       <ul>
         <li><a href="index.html" class="active">Home</a></li>
         <li><a href="opportunities.html">Opportunities</a></li>
@@ -28,35 +31,68 @@
   </header>
 
   <!-- Main Content Area -->
-  <main class="container page-content">
+  <main id="main-content" class="container page-content">
   <!-- Hero Section -->
-  <section class="hero-section text-center">
-    <div class="hero-content">
-      <h1>Discover Pathways to Your Future</h1>
-      <p class="lead-text">Find verified internships, learnerships, bursaries, and entry-level opportunities across South Africa.</p>
-      
-      <form class="hero-search-form" id="hero-search-form" action="opportunities.html" method="GET">
-        <div class="search-bar-group">
-          <input type="text" id="hero-search-input" name="search" placeholder="Search by title, skill, or keyword..." aria-label="Search opportunities">
-          <select id="hero-category-select" name="category" aria-label="Select category filter">
-            <option value="">All Categories</option>
-            <option value="internship">Internships</option>
-            <option value="learnership">Learnerships</option>
-            <option value="bursary">Bursaries</option>
-            <option value="first-job">First Jobs</option>
-            <option value="training">Training</option>
-            <option value="volunteering">Volunteering</option>
-          </select>
-          <button type="submit" class="btn btn-primary">Find Opportunities</button>
+  <section class="hero-section">
+    <div class="hero-layout">
+      <div class="hero-content">
+        <p class="hero-eyebrow"><span></span> A good place to start</p>
+        <h1>Your next step starts here.</h1>
+        <p class="lead-text">Browse sample internships, learnerships, bursaries, and entry-level pathways for young people across South Africa.</p>
+
+        <div class="hero-search-container">
+          <form class="hero-search-form" id="hero-search-form" action="opportunities.html" method="GET">
+            <label class="visually-hidden" for="hero-search-input">Search opportunities</label>
+            <div class="search-bar-group">
+              <input type="search" id="hero-search-input" name="search" placeholder="Search roles, skills, or organisations">
+              <label class="visually-hidden" for="hero-category-select">Opportunity category</label>
+              <select id="hero-category-select" name="category">
+                <option value="">All categories</option>
+                <option value="internship">Internships</option>
+                <option value="learnership">Learnerships</option>
+                <option value="bursary">Bursaries</option>
+                <option value="skill-programme">Skill programmes</option>
+                <option value="entry-level-jobs">Entry-level jobs</option>
+              </select>
+              <button type="submit" class="btn btn-primary">Explore opportunities</button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
+
+      <aside class="hero-showcase" aria-label="Opportunity pathways">
+        <div class="showcase-topline">
+          <span>Start here</span>
+          <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+        </div>
+        <p class="showcase-kicker">Small steps. Big possibilities.</p>
+        <h2>Make room for what's next.</h2>
+        <div class="showcase-pathways">
+          <a href="opportunities.html?category=internship">
+            <span class="pathway-icon"><i data-lucide="briefcase" aria-hidden="true"></i></span>
+            <span><strong>Get experience</strong><small>Internships & learnerships</small></span>
+            <i class="pathway-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+          </a>
+          <a href="opportunities.html?category=bursary">
+            <span class="pathway-icon"><i data-lucide="graduation-cap" aria-hidden="true"></i></span>
+            <span><strong>Fund your future</strong><small>Bursaries & study support</small></span>
+            <i class="pathway-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+          </a>
+          <a href="opportunities.html?category=entry-level-jobs">
+            <span class="pathway-icon"><i data-lucide="sparkles" aria-hidden="true"></i></span>
+            <span><strong>Start your journey</strong><small>Entry-level opportunities</small></span>
+            <i class="pathway-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+          </a>
+        </div>
+        <p class="showcase-note"><i data-lucide="shield-check" aria-hidden="true"></i> Explore safely. Never pay to apply.</p>
+      </aside>
     </div>
   </section>
 
   <!-- Anti-Scam Warning Banner -->
   <section class="scam-warning-banner" role="region" aria-label="Safety Alert">
     <div class="alert alert-warning d-flex align-items-center">
-      <div class="alert-icon">⚠️</div>
+      <div class="alert-icon" aria-hidden="true"><i data-lucide="shield-alert"></i></div>
       <div class="alert-body">
         <strong>Protect Yourself Against Recruitment Scams:</strong> Legitimate employers will <em>never</em> ask you to pay money for job applications, medical checks, or placement fees. 
         <a href="resources.html#anti-scam-guide" class="alert-link">Learn how to spot job scams →</a>
@@ -69,39 +105,51 @@
     <h2>Explore Opportunity Types</h2>
     <div class="grid grid-3">
       <a href="opportunities.html?category=internship" class="category-card">
-        <div class="card-icon">💼</div>
+        <div class="card-icon" aria-hidden="true"><i data-lucide="briefcase"></i></div>
         <h3>Internships</h3>
         <p>Gain practical workplace experience in your field of study.</p>
       </a>
 
       <a href="opportunities.html?category=learnership" class="category-card">
-        <div class="card-icon">🎓</div>
+        <div class="card-icon" aria-hidden="true"><i data-lucide="graduation-cap"></i></div>
         <h3>Learnerships</h3>
         <p>Combine theoretical learning with hands-on work experience while earning a stipend.</p>
       </a>
 
       <a href="opportunities.html?category=bursary" class="category-card">
-        <div class="card-icon">📜</div>
+        <div class="card-icon" aria-hidden="true"><i data-lucide="award"></i></div>
         <h3>Bursaries</h3>
         <p>Funding options for high school graduates and university students.</p>
       </a>
 
-      <a href="opportunities.html?category=first-job" class="category-card">
-        <div class="card-icon">🚀</div>
-        <h3>First Jobs</h3>
-        <p>Entry-level roles requiring minimal to no prior experience.</p>
+      <a href="opportunities.html?category=skill-programme" class="category-card">
+        <div class="card-icon" aria-hidden="true"><i data-lucide="wrench"></i></div>
+        <h3>Skill Programmes</h3>
+        <p>Find practical training programmes that help you build in-demand skills.</p>
       </a>
 
-      <a href="opportunities.html?category=training" class="category-card">
-        <div class="card-icon">🛠️</div>
-        <h3>Training Programs</h3>
-        <p>Bootcamps, short courses, and skills development initiatives.</p>
+      <a href="opportunities.html?category=entry-level-jobs" class="category-card">
+        <div class="card-icon" aria-hidden="true"><i data-lucide="rocket"></i></div>
+        <h3>Entry-Level Jobs</h3>
+        <p>Explore roles marked for entry-level experience and early career development.</p>
       </a>
 
-      <a href="opportunities.html?category=volunteering" class="category-card">
-        <div class="card-icon">🤝</div>
-        <h3>Volunteering</h3>
-        <p>Build your resume, network, and contribute to local community causes.</p>
+      <a href="opportunities.html" class="category-card">
+        <div class="card-icon" aria-hidden="true"><i data-lucide="search"></i></div>
+        <h3>Browse All</h3>
+        <p>Explore every current opportunity and filter by category, place, or experience.</p>
+      </a>
+
+      <a href="auth.html" class="category-card">
+        <div class="card-icon" aria-hidden="true"><i data-lucide="user-round"></i></div>
+        <h3>Create Your Profile</h3>
+        <p>Sign up to start building a profile for your next opportunity.</p>
+      </a>
+
+      <a href="resources.html" class="category-card">
+        <div class="card-icon" aria-hidden="true"><i data-lucide="book-open"></i></div>
+        <h3>Career Resources</h3>
+        <p>Get practical help with your CV, applications, interviews, and staying safe.</p>
       </a>
     </div>
   </section>
@@ -123,21 +171,15 @@
 
     <!-- Closing Soon Calendar Widget -->
     <aside class="closing-soon-sidebar">
-      <div class="widget-card">
-        <h3>⏰ Closing Soon</h3>
+      <div class="widget-card closing-soon-container">
+        <h3 class="closing-widget-heading">
+          <i data-lucide="clock" class="urgent-clock-icon" aria-hidden="true"></i>
+          <span>Closing Soon</span>
+          <span class="urgency-dot" aria-hidden="true"></span>
+        </h3>
         <p class="widget-subtitle">Don't miss out on upcoming deadlines!</p>
         <ul id="closing-soon-list" class="closing-soon-list">
-          <!-- Populated by JavaScript or fallback static placeholders -->
-          <li class="closing-item">
-            <span class="deadline-tag danger">2 Days Left</span>
-            <a href="details.html?id=1">Digital Skills Learnership 2026</a>
-            <small>Cape Town</small>
-          </li>
-          <li class="closing-item">
-            <span class="deadline-tag warning">5 Days Left</span>
-            <a href="details.html?id=2">Junior Web Dev Internship</a>
-            <small>Remote</small>
-          </li>
+          <li class="closing-item">Loading upcoming deadlines...</li>
         </ul>
       </div>
     </aside>
@@ -148,14 +190,15 @@
   <footer>
     <p>&copy; 2026 Youth Opportunity & Skills Portal. Demonstration Project.</p>
     <p>All information published is for educational and verification demonstration purposes.</p>
+    <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
   </footer>
 
-  <script src="js/main.js"></script>
-
 <!-- Place right before the closing </body> tag -->
+  <script src="https://unpkg.com/lucide@0.468.0"></script>
+  <script>
+    if (window.lucide) window.lucide.createIcons();
+  </script>
+  <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="./js/main.js"></script>
-</body>
-</html>
-
 </body>
 </html>
