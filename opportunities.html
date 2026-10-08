@@ -5,7 +5,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title> List of Opportubities </title>
+  <title>Browse Opportunities | Youth Opportunity Portal</title>
   <link rel="stylesheet" href="./css/style.css">
 </head>
 <body>
@@ -91,7 +91,7 @@
         </div>
 
         <label class="checkbox-label saved-filter-label">
-          <input type="checkbox" id="saved-only">
+          <input type="checkbox" id="saved-only" aria-label="Show saved opportunities only">
           Show saved opportunities only
         </label>
 
@@ -124,6 +124,8 @@
   <script>
     if (window.lucide) window.lucide.createIcons();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/supabase.js"></script>
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="./js/main.js"></script>
 </body>

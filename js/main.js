@@ -1,11 +1,17 @@
 // State management to store fetched opportunities
 let globalOpportunities = [];
 let revealObserver;
-const savedOpportunityIds = loadSavedOpportunityIds();
+const savedOpportunityIds = new Set();
+
+function savedOpportunityStorageKey() {
+  return window.portalUser?.id
+    ? `youth-portal-saved-opportunities:${window.portalUser.id}`
+    : 'youth-portal-saved-opportunities';
+}
 
 function loadSavedOpportunityIds() {
   try {
-    const stored = JSON.parse(localStorage.getItem('youth-portal-saved-opportunities') || '[]');
+    const stored = JSON.parse(localStorage.getItem(savedOpportunityStorageKey()) || '[]');
     return new Set(Array.isArray(stored) ? stored.map(String) : []);
   } catch (error) {
     console.error('Saved opportunities could not be loaded from local storage:', error);
@@ -15,12 +21,31 @@ function loadSavedOpportunityIds() {
 
 function persistSavedOpportunityIds() {
   try {
-    localStorage.setItem('youth-portal-saved-opportunities', JSON.stringify([...savedOpportunityIds]));
+    localStorage.setItem(savedOpportunityStorageKey(), JSON.stringify([...savedOpportunityIds]));
     return true;
   } catch (error) {
     console.error('Saved opportunities could not be stored in local storage:', error);
     return false;
   }
+}
+
+async function initializeSavedOpportunities() {
+  if (window.portalAuthReady) await window.portalAuthReady;
+  savedOpportunityIds.clear();
+  loadSavedOpportunityIds().forEach(id => savedOpportunityIds.add(id));
+
+  if (window.portalProfile?.role === 'youth_user' && typeof window.loadSavedOpportunitiesForCurrentUser === 'function') {
+    try {
+      const cloudSavedIds = await window.loadSavedOpportunitiesForCurrentUser();
+      cloudSavedIds.forEach(id => savedOpportunityIds.add(id));
+      persistSavedOpportunityIds();
+    } catch (error) {
+      console.error('Unable to load saved opportunities from your account:', error);
+      showSavedFeedback('Saved opportunities could not be loaded from your account. Try again later.', true);
+    }
+  }
+
+  updateSavedCount();
 }
 
 function initMobileNavigation() {
@@ -54,7 +79,7 @@ function initMobileNavigation() {
 }
 
 function initSavedOpportunityControls() {
-  document.addEventListener('click', event => {
+  document.addEventListener('click', async event => {
     if (!(event.target instanceof Element)) return;
     const button = event.target.closest('[data-save-opportunity]');
     if (!button) return;
@@ -71,15 +96,25 @@ function initSavedOpportunityControls() {
       return;
     }
 
-    updateSavedCount();
-    if (document.getElementById('opportunities-container')) {
-      applyFilters();
-    } else {
-      renderCards(
-        globalOpportunities.filter(item => !calculateTimeRemaining(item.closingDate).isExpired).slice(0, 4),
-        'featured-container'
-      );
+    button.disabled = true;
+    try {
+      if (window.portalProfile?.role === 'youth_user' && typeof window.saveOpportunityForCurrentUser === 'function') {
+        await window.saveOpportunityForCurrentUser(id, !wasSaved);
+      }
+    } catch (error) {
+      console.error('Unable to update saved opportunity in your account:', error);
+      if (wasSaved) savedOpportunityIds.add(id);
+      else savedOpportunityIds.delete(id);
+      persistSavedOpportunityIds();
+      updateSavedCount();
+      refreshSavedOpportunityCards();
+      showSavedFeedback('Your account could not be updated, so this change was not saved. Please try again.', true);
+      return;
     }
+
+    showSavedFeedback('');
+    updateSavedCount();
+    refreshSavedOpportunityCards();
   });
 
   const savedOnly = document.getElementById('saved-only');
@@ -90,6 +125,34 @@ function initSavedOpportunityControls() {
 function updateSavedCount() {
   const count = document.getElementById('saved-count');
   if (count) count.textContent = `${savedOpportunityIds.size} saved`;
+}
+
+function showSavedFeedback(message, isError = false) {
+  let feedback = document.getElementById('saved-feedback');
+  if (!feedback) {
+    const container = document.getElementById('opportunities-container') || document.getElementById('featured-container');
+    if (!container) return;
+    feedback = document.createElement('p');
+    feedback.id = 'saved-feedback';
+    feedback.setAttribute('role', 'status');
+    feedback.setAttribute('aria-live', 'polite');
+    container.before(feedback);
+  }
+
+  feedback.className = isError ? 'saved-feedback text-danger' : 'saved-feedback text-success';
+  feedback.textContent = message;
+}
+
+function refreshSavedOpportunityCards() {
+  if (document.getElementById('opportunities-container')) {
+    applyFilters();
+    return;
+  }
+
+  renderCards(
+    globalOpportunities.filter(item => !calculateTimeRemaining(item.closingDate).isExpired).slice(0, 4),
+    'featured-container'
+  );
 }
 
 /**
@@ -345,7 +408,9 @@ function renderErrorMessage() {
 /**
  * 2. HOME PAGE LOGIC (index.html)
  */
-function initHomePage() {
+async function initHomePage() {
+  await initializeSavedOpportunities();
+
   // Keep expired opportunities out of the active featured feed.
   const featured = globalOpportunities
     .filter(item => !calculateTimeRemaining(item.closingDate).isExpired)
@@ -359,7 +424,9 @@ function initHomePage() {
 /**
  * 3. BROWSE PAGE LOGIC (opportunities.html)
  */
-function initBrowsePage() {
+async function initBrowsePage() {
+  await initializeSavedOpportunities();
+
   // Check for URL query params passed from Home page (e.g. ?category=internship or ?search=developer)
   const urlParams = new URLSearchParams(window.location.search);
   const searchParam = urlParams.get('search') || '';
@@ -762,6 +829,9 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+window.saveOpportunityForCurrentUser = saveOpportunityForCurrentUser;
+window.loadSavedOpportunitiesForCurrentUser = loadSavedOpportunitiesForCurrentUser;
 
 // Initialize script when DOM is fully loaded
 document.addEventListener('DOMContentLoaded', () => {

@@ -23,10 +23,10 @@ The portal brings sample internships, learnerships, bursaries, and entry-level o
 - Responsive home, browse, details, career resources, contact/report, sign-up, and partner-posting pages.
 - Dynamic listing and detail rendering from [`data/opportunities.json`](./data/opportunities.json), including closing countdowns, urgency badges, and expired-listing exclusion from active feeds.
 - Live keyword, category, location, experience, deadline, and saved-only filtering with an empty state and reset action.
-- Browser-local saved opportunities using `localStorage`.
+- Saved opportunities in `localStorage` for guests, with cross-device account bookmarks for signed-in youth users when the Supabase migration is applied.
 - Mobile navigation button with Escape-to-close and focus return.
 - Keyboard focus styling, semantic page landmarks, labeled forms, reduced-motion support, and sample-data/safety notices.
-- Supabase Auth and partner-posting UI, plus a contact form backed by an insert-only SQL migration.
+- Supabase Auth with youth/provider roles, profile creation, verified-provider posting controls, and RLS-protected bookmarks; partner-posting UI requires provider verification.
 - Neo-Brutalist visual theme with responsive CSS, reveal motion, card tilt, and Lenis smooth scrolling when motion is allowed and its CDN is available.
 
 ## Technology
@@ -51,14 +51,22 @@ For a simple Netlify static deployment, publish the repository root (the directo
 
 The JSON records are clearly labeled sample opportunities. Their `applicationLink` and `sourceUrl` values are null, and `verifiedStatus` is false, so the detail view does not invent an application destination. Replace them only with current information checked against official organisation sources. The browse page hides expired records; it does not delete them from the local JSON file.
 
-To enable contact-form writes, apply [`supabase/contact_submissions.sql`](./supabase/contact_submissions.sql) to the intended Supabase project and configure the project credentials in the client. The SQL permits public inserts, not reads; add abuse controls/rate limiting before production use. Auth, profile creation, organisation registration, and partner posting require their corresponding Supabase tables, policies, and role enforcement; they are not validated against a live project in this repository.
+To enable Supabase features:
+
+1. Confirm the project URL and browser-safe publishable/anon key in [`js/supabase.js`](./js/supabase.js). Never put a service-role key in client-side code.
+2. Run [`supabase/auth_roles_and_saved.sql`](./supabase/auth_roles_and_saved.sql) in the Supabase SQL Editor to create profiles, auth-user profile creation, saved-opportunity storage, and RLS policies. The script is designed to be rerun: it extends an older `opportunities` table and replaces its policies to enforce verified-provider access.
+3. Apply [`supabase/contact_submissions.sql`](./supabase/contact_submissions.sql) for the contact/report form.
+4. Enable email confirmation as appropriate and configure the Supabase Auth redirect/URL allow lists for the local and deployed site.
+5. Verify provider organisations manually in the Supabase SQL Editor after review, using the commented update query at the end of the auth migration. Provider registration never grants verification or publishing rights by itself.
+
+The opportunities page currently reads the sample feed from `data/opportunities.json`; provider-created rows are stored in the remote `opportunities` table but are not yet merged into that local feed. A read-only check of the configured Supabase project found an older `opportunities` schema without the columns required by provider posting. A successful earlier SQL run did not add those columns because the table already existed, so run the current migration again before testing posts. No successful sign-in or database write has been validated from this repository.
 
 ## Known limitations and next steps
 
-- No deployed Netlify/GitHub Pages URL, production data feed, or live Supabase configuration has been verified.
+- No deployed Netlify/GitHub Pages URL or production data feed has been verified.
 - Current listings are a small fictional/sample dataset and have no verified apply URLs or listing-specific application instructions.
-- Saved items are limited to the current browser and device.
-- Supabase profile and partner-posting schema/policies are outside the contact-submission migration.
+- Guests' saved items are limited to the current browser and device; account bookmarks require the auth migration and a signed-in youth profile.
+- Provider-created opportunities require the current auth migration, a verified profile, and RLS policies; they currently do not appear in the static sample feed.
 - Add a verified data-maintenance workflow, server-side authorization and spam protections, cross-device saved accounts, and automated browser/accessibility tests before production use.
 - The included wireframes are visual references; no interactive prototype or formal user study is claimed.
 

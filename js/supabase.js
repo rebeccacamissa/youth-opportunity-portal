@@ -1,209 +1,416 @@
-// Replace with your actual Supabase URL and Anon Key
-const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co'; 
+const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jD_L6Kc2wWNecORjKzgkbw_-OXRdxO7';
+const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
 
-const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+window.supabaseClient = supabaseClient;
+window.portalUser = null;
+window.portalProfile = null;
 
-/* ==========================================================================
-   1. MULTI-STEP USER SIGN-UP & ONBOARDING LOGIC (auth.html)
-   ========================================================================== */
+let resolvePortalAuthReady;
+window.portalAuthReady = new Promise(resolve => {
+  resolvePortalAuthReady = resolve;
+});
+window.setTimeout(resolvePortalAuthReady, 4000);
 
-let signupDataStep1 = {};
+function getAuthFeedback() {
+  return document.getElementById('auth-feedback');
+}
 
-/**
- * Handle Step 1 Form Submission
- */
-function handleStep1(event) {
-  event.preventDefault();
+function showAuthFeedback(message, type = '') {
+  const element = getAuthFeedback();
+  if (!element) return;
+  element.className = `auth-feedback${type ? ` ${type}` : ''}`;
+  element.textContent = message;
+}
 
-  signupDataStep1 = {
-    fullName: document.getElementById('full-name').value.trim(),
-    age: parseInt(document.getElementById('age').value, 10),
-    country: document.getElementById('country').value.trim(),
-    phone: document.getElementById('phone').value.trim(),
-    email: document.getElementById('email').value.trim(),
-    password: document.getElementById('password').value,
-    qualification: document.getElementById('highest-qualification').value,
-    interest: document.getElementById('user-interest').value // 'matriculant', 'jobseeker', or 'student'
+function safeAuthRedirect(role, verified) {
+  const next = new URLSearchParams(window.location.search).get('next');
+  const allowed = new Set(['index.html', 'opportunities.html', 'resources.html', 'contact.html', 'admin-post.html']);
+  if (next && allowed.has(next)) {
+    if (next !== 'admin-post.html' || (role === 'community_provider' && verified)) return next;
+  }
+  return role === 'community_provider' && verified ? 'admin-post.html' : 'index.html';
+}
+
+function renderAuthNavigation(user, profile) {
+  const list = document.querySelector('#portal-navigation ul');
+  if (!list) return;
+
+  list.querySelectorAll('[data-auth-nav]').forEach(item => item.remove());
+  const addItem = content => {
+    const item = document.createElement('li');
+    item.dataset.authNav = 'true';
+    item.append(content);
+    list.append(item);
   };
 
-  // Hide Step 1 Form
-  document.getElementById('signup-step-1').style.display = 'none';
+  if (!user) {
+    const login = document.createElement('a');
+    login.href = 'auth.html?mode=signin';
+    login.className = 'nav-auth-link';
+    login.textContent = 'Log In';
+    addItem(login);
 
-  // Show Step 2 Container & Conditional Sub-Section
-  document.getElementById('signup-step-2').style.display = 'block';
-  document.getElementById('matriculant-fields').style.display = 'none';
-  document.getElementById('jobseeker-fields').style.display = 'none';
-  document.getElementById('student-fields').style.display = 'none';
-
-  // Conditional Routing based on User Interest
-  if (signupDataStep1.interest === 'matriculant') {
-    document.getElementById('matriculant-fields').style.display = 'block';
-  } else if (signupDataStep1.interest === 'jobseeker') {
-    document.getElementById('jobseeker-fields').style.display = 'block';
-  } else if (signupDataStep1.interest === 'student') {
-    document.getElementById('student-fields').style.display = 'block';
-  }
-}
-
-/**
- * Handle Step 2 Submission & Supabase Registration
- */
-async function handleStep2(event) {
-  event.preventDefault();
-  const feedbackEl = document.getElementById('auth-feedback');
-  feedbackEl.textContent = 'Creating account...';
-
-  const interest = signupDataStep1.interest;
-  let profileData = { ...signupDataStep1 };
-  delete profileData.password; // Do not store plaintext password in profile table
-
-  // Collect conditional fields
-  if (interest === 'matriculant') {
-    profileData.reportLink = document.getElementById('report-link').value.trim();
-    profileData.skills = document.getElementById('matric-skills').value.split(',').map(s => s.trim());
-    profileData.activities = document.getElementById('extracurriculars').value.trim();
-  } else if (interest === 'jobseeker') {
-    profileData.cvUrl = document.getElementById('jobseeker-cv').value.trim();
-    profileData.targetIndustry = document.getElementById('target-industry').value;
-    profileData.experienceLevel = document.getElementById('jobseeker-exp').value;
-  } else if (interest === 'student') {
-    profileData.currentQualification = document.getElementById('current-qualification').value.trim();
-    profileData.experience = document.getElementById('student-experience').value.trim();
-    profileData.cvUrl = document.getElementById('student-cv').value.trim();
-  }
-
-  try {
-    // 1. Authenticate with Supabase Auth
-    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-      email: signupDataStep1.email,
-      password: signupDataStep1.password
-    });
-
-    if (authError) throw authError;
-
-    // 2. Insert Extended Profile Data into Supabase 'profiles' table
-    if (authData.user) {
-      profileData.id = authData.user.id;
-      const { error: profileError } = await supabaseClient
-        .from('profiles')
-        .insert([profileData]);
-
-      if (profileError) throw profileError;
-
-      feedbackEl.className = 'text-success';
-      feedbackEl.textContent = 'Account created successfully! Redirecting...';
-      setTimeout(() => { window.location.href = 'index.html'; }, 2000);
-    }
-  } catch (err) {
-    feedbackEl.className = 'text-danger';
-    feedbackEl.textContent = `Error: ${err.message}`;
-  }
-}
-
-/* ==========================================================================
-   2. ADMIN PARTNER PORTAL LOGIC (admin-post.html)
-   ========================================================================== */
-
-/**
- * Admin Sign-Up with Email Domain Check
- */
-async function handleAdminSignUp(event) {
-  event.preventDefault();
-  const email = document.getElementById('admin-email').value.trim();
-  const password = document.getElementById('admin-password').value;
-  const companyName = document.getElementById('admin-company').value.trim();
-  const sector = document.getElementById('admin-sector').value;
-  const location = document.getElementById('admin-location').value.trim();
-  const website = document.getElementById('admin-website').value.trim();
-  const feedbackEl = document.getElementById('admin-auth-feedback');
-
-  // Enforce domain check (Must NOT be standard free domains like gmail, yahoo, outlook)
-  const forbiddenDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com'];
-  const emailDomain = email.split('@')[1]?.toLowerCase();
-
-  if (!emailDomain || forbiddenDomains.includes(emailDomain)) {
-    feedbackEl.className = 'text-danger';
-    feedbackEl.textContent = 'Error: Admin registration requires an official company email address (e.g., @company.com). Free email domains are not allowed.';
+    const register = document.createElement('a');
+    register.href = 'auth.html?mode=signup';
+    register.className = 'nav-auth-link nav-register-link';
+    register.textContent = 'Register';
+    addItem(register);
     return;
   }
 
-  try {
-    feedbackEl.textContent = 'Registering admin partner...';
-    
-    // Register Admin via Supabase Auth
-    const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: { data: { role: 'admin', companyName } }
-    });
+  const identity = document.createElement('span');
+  identity.className = 'nav-profile-badge';
+  const name = document.createElement('strong');
+  name.textContent = profile?.full_name || user.user_metadata?.full_name || user.email || 'Account';
+  const role = document.createElement('small');
+  role.textContent = profile?.role === 'community_provider'
+    ? 'Community Provider'
+    : profile?.role === 'youth_user'
+      ? 'Youth Job Seeker'
+      : 'Profile unavailable';
+  identity.append(name, role);
+  addItem(identity);
 
-    if (authError) throw authError;
-
-    // Save Admin Organization Profile
-    if (authData.user) {
-      const { error: orgError } = await supabaseClient.from('organizations').insert([{
-        id: authData.user.id,
-        companyName,
-        sector,
-        location,
-        email,
-        website
-      }]);
-
-      if (orgError) throw orgError;
-
-      feedbackEl.className = 'text-success';
-      feedbackEl.textContent = 'Admin partner registered! You can now post new opportunities below.';
-      document.getElementById('admin-post-section').style.display = 'block';
-      document.getElementById('admin-signup-form').style.display = 'none';
-    }
-  } catch (err) {
-    feedbackEl.className = 'text-danger';
-    feedbackEl.textContent = `Error: ${err.message}`;
+  if (profile?.role === 'community_provider' && profile.is_verified) {
+    const postLink = document.createElement('a');
+    postLink.href = 'admin-post.html';
+    postLink.className = 'nav-auth-link nav-provider-link';
+    postLink.textContent = 'Post New Opportunity';
+    addItem(postLink);
+  } else if (profile?.role === 'community_provider') {
+    const pending = document.createElement('span');
+    pending.className = 'nav-provider-pending';
+    pending.textContent = 'Verification pending';
+    addItem(pending);
   }
+
+  const signOut = document.createElement('button');
+  signOut.type = 'button';
+  signOut.className = 'nav-auth-link nav-signout-button';
+  signOut.dataset.signOut = 'true';
+  signOut.textContent = 'Sign Out';
+  addItem(signOut);
+
+  const feedback = document.createElement('span');
+  feedback.id = 'auth-nav-feedback';
+  feedback.className = 'auth-nav-feedback';
+  feedback.setAttribute('role', 'status');
+  feedback.setAttribute('aria-live', 'polite');
+  addItem(feedback);
 }
 
-/**
- * Insert Opportunity into Supabase Table
- */
-async function handlePostOpportunity(event) {
-  event.preventDefault();
-  const feedbackEl = document.getElementById('post-feedback');
+async function refreshPortalAuth(user) {
+  window.portalUser = user || null;
+  window.portalProfile = null;
 
-  const newOpportunity = {
-    title: document.getElementById('post-title').value.trim(),
-    category: document.getElementById('post-category').value,
-    closingDate: document.getElementById('post-closing-date').value,
-    organization: document.getElementById('admin-company')?.value || 'Partner Organization',
-    location: document.getElementById('post-location').value.trim(),
-    stipend: document.getElementById('post-stipend').value.trim(),
-    description: document.getElementById('post-description').value.trim(),
-    requirements: document.getElementById('post-requirements').value.split('\n').map(r => r.trim()).filter(Boolean),
-    applyUrl: document.getElementById('post-apply-url').value.trim()
+  if (user && supabaseClient) {
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('id, full_name, email, role, organization_name, is_verified')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Unable to load account profile:', error);
+    } else {
+      window.portalProfile = data;
+    }
+  }
+
+  renderAuthNavigation(window.portalUser, window.portalProfile);
+  updateProviderPostingAccess();
+  document.dispatchEvent(new CustomEvent('portal-auth-state-change', {
+    detail: { user: window.portalUser, profile: window.portalProfile }
+  }));
+}
+
+function updateProviderPostingAccess() {
+  const section = document.getElementById('admin-post-section');
+  if (!section) return;
+
+  const message = document.getElementById('provider-access-message');
+  const profile = window.portalProfile;
+  if (!window.portalUser) {
+    if (message) {
+      message.className = 'auth-feedback text-danger';
+      message.innerHTML = 'Sign in with a verified provider account to post opportunities. <a href="auth.html?mode=signin&next=admin-post.html">Sign in</a>';
+    }
+    section.hidden = true;
+    return;
+  }
+
+  if (profile?.role !== 'community_provider') {
+    if (message) {
+      message.className = 'auth-feedback text-danger';
+      message.textContent = 'This page is available to community opportunity providers. Sign in with a provider account to continue.';
+    }
+    section.hidden = true;
+    return;
+  }
+
+  if (!profile.is_verified) {
+    if (message) {
+      message.className = 'auth-feedback';
+      message.textContent = 'Your provider account is awaiting verification. You will be able to post after an administrator verifies your organization.';
+    }
+    section.hidden = true;
+    return;
+  }
+
+  if (message) {
+    message.className = 'auth-feedback text-success';
+    message.textContent = 'Your provider account is verified. You can publish opportunities for your organization.';
+  }
+  const organization = document.getElementById('provider-organization');
+  if (organization) organization.textContent = profile.organization_name || '';
+  section.hidden = false;
+}
+
+function initAuthState() {
+  if (!supabaseClient) {
+    renderAuthNavigation(null, null);
+    resolvePortalAuthReady();
+    return;
+  }
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    window.setTimeout(async () => {
+      await refreshPortalAuth(session?.user || null);
+      resolvePortalAuthReady();
+    }, 0);
+  });
+}
+
+function setAuthTab(mode, moveFocus = false) {
+  const isSignup = mode === 'signup';
+  const signinTab = document.getElementById('signin-tab');
+  const signupTab = document.getElementById('signup-tab');
+  const signinPanel = document.getElementById('signin-panel');
+  const signupPanel = document.getElementById('signup-panel');
+  if (!signinTab || !signupTab || !signinPanel || !signupPanel) return;
+
+  signinTab.classList.toggle('is-active', !isSignup);
+  signupTab.classList.toggle('is-active', isSignup);
+  signinTab.setAttribute('aria-selected', String(!isSignup));
+  signupTab.setAttribute('aria-selected', String(isSignup));
+  signinPanel.hidden = isSignup;
+  signupPanel.hidden = !isSignup;
+  if (moveFocus) (isSignup ? signupTab : signinTab).focus();
+  showAuthFeedback('');
+}
+
+function initAuthForms() {
+  const signinForm = document.getElementById('signin-form');
+  const signupForm = document.getElementById('signup-form');
+  if (!signinForm || !signupForm) return;
+
+  document.querySelectorAll('[data-auth-tab]').forEach(tab => {
+    tab.addEventListener('click', () => setAuthTab(tab.dataset.authTab));
+  });
+
+  const roleSelect = document.getElementById('signup-role');
+  const organizationGroup = document.getElementById('organization-name-group');
+  const organizationInput = document.getElementById('signup-organization');
+  const updateOrganizationField = () => {
+    const isProvider = roleSelect.value === 'community_provider';
+    organizationGroup.hidden = !isProvider;
+    organizationInput.required = false;
   };
+  roleSelect.addEventListener('change', updateOrganizationField);
+  updateOrganizationField();
+
+  const mode = new URLSearchParams(window.location.search).get('mode');
+  setAuthTab(mode === 'signup' ? 'signup' : 'signin');
+
+  signinForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!supabaseClient) {
+      showAuthFeedback('The sign-in service is unavailable. Please try again later.', 'text-danger');
+      return;
+    }
+
+    const button = signinForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Signing in…';
+    showAuthFeedback('Signing in…');
+
+    try {
+      const formData = new FormData(signinForm);
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: String(formData.get('email')).trim(),
+        password: String(formData.get('password'))
+      });
+      if (error) throw error;
+      const { data: profile, error: profileError } = await supabaseClient
+        .from('profiles')
+        .select('role, is_verified')
+        .eq('id', data.user.id)
+        .maybeSingle();
+      if (profileError) throw profileError;
+
+      if (profile?.role === 'community_provider' && !profile.is_verified) {
+        showAuthFeedback('Signed in. Your provider account is awaiting verification before you can post.', 'text-success');
+        window.setTimeout(() => { window.location.href = 'index.html'; }, 1400);
+      } else {
+        showAuthFeedback('Signed in successfully. Redirecting…', 'text-success');
+        window.setTimeout(() => {
+          window.location.href = safeAuthRedirect(profile?.role, profile?.is_verified);
+        }, 700);
+      }
+    } catch (error) {
+      console.error('Sign in failed:', error);
+      showAuthFeedback(error.message || 'Unable to sign in. Check your details and try again.', 'text-danger');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Sign In';
+    }
+  });
+
+  signupForm.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (!supabaseClient) {
+      showAuthFeedback('The registration service is unavailable. Please try again later.', 'text-danger');
+      return;
+    }
+
+    const button = signupForm.querySelector('button[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Creating account…';
+    showAuthFeedback('Creating your account…');
+
+    try {
+      const formData = new FormData(signupForm);
+      const fullName = String(formData.get('full_name')).trim();
+      const email = String(formData.get('email')).trim();
+      const role = String(formData.get('role'));
+      const organizationName = String(formData.get('organization_name') || '').trim();
+      if (!['youth_user', 'community_provider'].includes(role)) {
+        throw new Error('Choose a valid account type.');
+      }
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password: String(formData.get('password')),
+        options: {
+          data: {
+            full_name: fullName,
+            role,
+            organization_name: role === 'community_provider' ? organizationName : null
+          }
+        }
+      });
+      if (error) throw error;
+
+      if (!data.session) {
+        showAuthFeedback('Account created. Check your email to confirm your address before signing in.', 'text-success');
+      } else if (role === 'community_provider') {
+        showAuthFeedback('Account created. Your provider profile must be verified before you can post opportunities.', 'text-success');
+        window.setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+      } else {
+        showAuthFeedback('Account created successfully. Redirecting…', 'text-success');
+        window.setTimeout(() => { window.location.href = 'index.html'; }, 700);
+      }
+    } catch (error) {
+      console.error('Account registration failed:', error);
+      showAuthFeedback(error.message || 'Unable to create your account. Please try again.', 'text-danger');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Create Account';
+    }
+  });
+}
+
+async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
+  if (!supabaseClient || !window.portalUser || window.portalProfile?.role !== 'youth_user') {
+    throw new Error('Sign in with a youth account to sync saved opportunities.');
+  }
+
+  if (isSaved) {
+    const { error } = await supabaseClient
+      .from('user_saved_opportunities')
+      .upsert({
+        user_id: window.portalUser.id,
+        opportunity_id: String(opportunityId)
+      }, { onConflict: 'user_id,opportunity_id' });
+    if (error) throw error;
+  } else {
+    const { error } = await supabaseClient
+      .from('user_saved_opportunities')
+      .delete()
+      .eq('user_id', window.portalUser.id)
+      .eq('opportunity_id', String(opportunityId));
+    if (error) throw error;
+  }
+  return true;
+}
+
+async function loadSavedOpportunitiesForCurrentUser() {
+  if (!supabaseClient || !window.portalUser || window.portalProfile?.role !== 'youth_user') {
+    throw new Error('Sign in with a youth account to load saved opportunities.');
+  }
+  const { data, error } = await supabaseClient
+    .from('user_saved_opportunities')
+    .select('opportunity_id')
+    .eq('user_id', window.portalUser.id);
+  if (error) throw error;
+  return data.map(row => String(row.opportunity_id));
+}
+
+async function handleOpportunityPost(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const feedback = document.getElementById('post-feedback');
+  const button = form.querySelector('button[type="submit"]');
+  const profile = window.portalProfile;
+
+  if (!supabaseClient || !window.portalUser || profile?.role !== 'community_provider' || !profile.is_verified) {
+    feedback.className = 'auth-feedback text-danger';
+    feedback.textContent = 'Only signed-in, verified community providers may publish opportunities.';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Publishing…';
+  feedback.className = 'auth-feedback';
+  feedback.textContent = 'Publishing opportunity…';
 
   try {
-    feedbackEl.textContent = 'Publishing listing...';
+    const requirements = document.getElementById('post-requirements').value
+      .split('\n')
+      .map(value => value.trim())
+      .filter(Boolean);
+    const applicationUrl = new URL(document.getElementById('post-apply-url').value.trim());
+    if (applicationUrl.protocol !== 'https:') throw new Error('The official application URL must use HTTPS.');
 
-    const { data, error } = await supabaseClient
-      .from('opportunities')
-      .insert([newOpportunity]);
-
+    const { error } = await supabaseClient.from('opportunities').insert({
+      owner_id: window.portalUser.id,
+      title: document.getElementById('post-title').value.trim(),
+      category: document.getElementById('post-category').value,
+      closing_date: document.getElementById('post-closing-date').value,
+      location: document.getElementById('post-location').value.trim(),
+      stipend: document.getElementById('post-stipend').value.trim() || 'Not specified',
+      description: document.getElementById('post-description').value.trim(),
+      requirements,
+      application_url: applicationUrl.href,
+      organization_name: profile.organization_name
+    });
     if (error) throw error;
 
-    feedbackEl.className = 'text-success';
-    feedbackEl.textContent = 'Opportunity posted successfully!';
-    document.getElementById('opportunity-post-form').reset();
-  } catch (err) {
-    feedbackEl.className = 'text-danger';
-    feedbackEl.textContent = `Error posting listing: ${err.message}`;
+    feedback.className = 'auth-feedback text-success';
+    feedback.textContent = 'Opportunity published successfully.';
+    form.reset();
+  } catch (error) {
+    console.error('Opportunity publication failed:', error);
+    feedback.className = 'auth-feedback text-danger';
+    feedback.textContent = error.message || 'Unable to publish this opportunity. Please try again.';
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Publish opportunity';
   }
 }
 
 async function handleContactSubmission(event) {
   event.preventDefault();
-
   const form = event.currentTarget;
   const feedbackEl = document.getElementById('contact-feedback');
   const submitButton = form.querySelector('button[type="submit"]');
@@ -211,7 +418,6 @@ async function handleContactSubmission(event) {
 
   feedbackEl.className = 'mb-3';
   feedbackEl.textContent = '';
-
   if (!supabaseClient) {
     feedbackEl.classList.add('text-danger');
     feedbackEl.textContent = 'The contact service is unavailable. Please try again later.';
@@ -219,8 +425,7 @@ async function handleContactSubmission(event) {
   }
 
   submitButton.disabled = true;
-  feedbackEl.textContent = 'Sending your message...';
-
+  feedbackEl.textContent = 'Sending your message…';
   try {
     const { error } = await supabaseClient.from('contact_submissions').insert({
       submission_type: String(formData.get('type')).trim(),
@@ -230,7 +435,6 @@ async function handleContactSubmission(event) {
       listing_url: String(formData.get('listing_url') || '').trim() || null,
       message: String(formData.get('message')).trim()
     });
-
     if (error) throw error;
 
     form.reset();
@@ -245,22 +449,39 @@ async function handleContactSubmission(event) {
   }
 }
 
-// Attach event listeners when DOM loads
-document.addEventListener('DOMContentLoaded', () => {
-  const step1Form = document.getElementById('signup-step-1-form');
-  const step2Form = document.getElementById('signup-step-2-form');
-  const adminSignupForm = document.getElementById('admin-signup-form');
-  const postForm = document.getElementById('opportunity-post-form');
-  const contactForm = document.getElementById('contact-form');
-  const contactType = document.getElementById('contact-type');
+document.addEventListener('click', async event => {
+  if (!(event.target instanceof Element)) return;
+  const signOutButton = event.target.closest('[data-sign-out]');
+  if (!signOutButton) return;
+  if (!supabaseClient) {
+    console.error('Sign out unavailable: Supabase client is not initialized.');
+    return;
+  }
 
-  if (step1Form) step1Form.addEventListener('submit', handleStep1);
-  if (step2Form) step2Form.addEventListener('submit', handleStep2);
-  if (adminSignupForm) adminSignupForm.addEventListener('submit', handleAdminSignUp);
-  if (postForm) postForm.addEventListener('submit', handlePostOpportunity);
+  signOutButton.disabled = true;
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+    window.location.href = 'index.html';
+  } catch (error) {
+    console.error('Sign out failed:', error);
+    signOutButton.disabled = false;
+    const feedback = document.getElementById('auth-nav-feedback');
+    if (feedback) feedback.textContent = 'Unable to sign out. Please try again.';
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  initAuthState();
+  initAuthForms();
+
+  const contactForm = document.getElementById('contact-form');
   if (contactForm) contactForm.addEventListener('submit', handleContactSubmission);
+  const postingForm = document.getElementById('opportunity-post-form');
+  if (postingForm) postingForm.addEventListener('submit', handleOpportunityPost);
 
   const requestedContactType = new URLSearchParams(window.location.search).get('type');
+  const contactType = document.getElementById('contact-type');
   if (contactType && ['general', 'report', 'suggest', 'feedback'].includes(requestedContactType)) {
     contactType.value = requestedContactType;
   }

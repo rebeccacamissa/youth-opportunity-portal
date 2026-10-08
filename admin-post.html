@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Partner Portal</title>
+  <title>Post an Opportunity | Youth Opportunity Portal</title>
   <link rel="stylesheet" href="./css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header>
@@ -26,70 +25,21 @@
   </header>
 
   <main class="container page-content">
-    <header class="page-header text-center">
-      <h1>Admin Partner Portal</h1>
-      <p>Post verified opportunities for South African youth.</p>
+    <header class="page-header">
+      <h1>Provider opportunity posting</h1>
+      <p>Share accurate opportunities with young people. Provider accounts must be verified before publishing.</p>
     </header>
-
-    <!-- ADMIN SIGN-UP SECTION -->
-    <section class="admin-card" id="admin-auth-section">
-      <h2>Partner Organization Registration</h2>
-      <div id="admin-auth-feedback" class="mb-3"></div>
-
-      <form id="admin-signup-form">
-        <div class="grid grid-2">
-          <div class="form-group">
-            <label for="admin-company">Company / Organization Name</label>
-            <input type="text" id="admin-company" class="form-control" required placeholder="e.g. TechCorp SA">
-          </div>
-          <div class="form-group">
-            <label for="admin-sector">Sector</label>
-            <select id="admin-sector" class="form-control" required>
-              <option value="private">Private Sector</option>
-              <option value="ngo">NGO / Non-Profit</option>
-              <option value="government">Government / Public Sector</option>
-              <option value="education">Education & Training</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-2">
-          <div class="form-group">
-            <label for="admin-location">Head Office Location</label>
-            <input type="text" id="admin-location" class="form-control" required placeholder="e.g. Cape Town">
-          </div>
-          <div class="form-group">
-            <label for="admin-website">Company Website</label>
-            <input type="url" id="admin-website" class="form-control" required placeholder="https://company.com">
-          </div>
-        </div>
-
-        <div class="grid grid-2">
-          <div class="form-group">
-            <label for="admin-email">Official Company Email</label>
-            <input type="email" id="admin-email" class="form-control" required placeholder="hr@company.com">
-            <small class="form-text text-muted">Must use official corporate domain (@company.com). Free email domains are restricted.</small>
-          </div>
-          <div class="form-group">
-            <label for="admin-password">Password</label>
-            <input type="password" id="admin-password" class="form-control" required minlength="6">
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary">Register Organization Account</button>
-      </form>
-    </section>
-
-    <!-- OPPORTUNITY POSTING FORM (Shown to Verified Admins) -->
-    <section class="admin-card mt-4" id="admin-post-section" style="display: none;">
+    <p id="provider-access-message" class="auth-feedback" role="status" aria-live="polite">Checking your provider access…</p>
+    <section class="admin-card mt-4" id="admin-post-section" hidden>
       <h2>Post a New Opportunity</h2>
-      <div id="post-feedback" class="mb-3"></div>
+      <p id="provider-organization" class="text-muted"></p>
+      <p id="post-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
 
       <form id="opportunity-post-form">
         <div class="grid grid-2">
           <div class="form-group">
-            <label for="post-title">Job / Opportunity Title</label>
-            <input type="text" id="post-title" class="form-control" required placeholder="e.g. Software Support Intern">
+            <label for="post-title">Opportunity title</label>
+            <input type="text" id="post-title" class="form-control" maxlength="180" required>
           </div>
           <div class="form-group">
             <label for="post-category">Category</label>
@@ -98,42 +48,37 @@
               <option value="learnership">Learnership</option>
               <option value="bursary">Bursary</option>
               <option value="skill-programme">Skill Programme</option>
-              <option value="first-job">First Job</option>
+              <option value="first-job">Entry-Level Job</option>
             </select>
           </div>
         </div>
-
         <div class="grid grid-3">
           <div class="form-group">
-            <label for="post-closing-date">Closing Date</label>
+            <label for="post-closing-date">Closing date</label>
             <input type="date" id="post-closing-date" class="form-control" required>
           </div>
           <div class="form-group">
             <label for="post-location">Location</label>
-            <input type="text" id="post-location" class="form-control" required placeholder="e.g. Cape Town / Hybrid">
+            <input type="text" id="post-location" class="form-control" maxlength="160" required>
           </div>
           <div class="form-group">
-            <label for="post-stipend">Stipend / Salary</label>
-            <input type="text" id="post-stipend" class="form-control" placeholder="e.g. R6,000 / month">
+            <label for="post-stipend">Stipend / salary (optional)</label>
+            <input type="text" id="post-stipend" class="form-control" maxlength="100">
           </div>
         </div>
-
         <div class="form-group">
-          <label for="post-description">Full Job Description</label>
-          <textarea id="post-description" class="form-control" rows="4" required></textarea>
+          <label for="post-description">Full description</label>
+          <textarea id="post-description" class="form-control" rows="5" maxlength="10000" required></textarea>
         </div>
-
         <div class="form-group">
-          <label for="post-requirements">Requirements (One per line)</label>
-          <textarea id="post-requirements" class="form-control" rows="3" required placeholder="Matric Certificate&#10;Basic computer literacy&#10;Aged 18-35"></textarea>
+          <label for="post-requirements">Eligibility and requirements (one per line)</label>
+          <textarea id="post-requirements" class="form-control" rows="4" maxlength="5000" required></textarea>
         </div>
-
         <div class="form-group">
-          <label for="post-apply-url">Direct Application URL</label>
-          <input type="url" id="post-apply-url" class="form-control" required placeholder="https://company.com/careers/apply">
+          <label for="post-apply-url">Official application URL</label>
+          <input type="url" id="post-apply-url" class="form-control" pattern="https://.+" placeholder="https://…" required>
         </div>
-
-        <button type="submit" class="btn btn-primary">Publish Listing</button>
+        <button type="submit" class="btn btn-primary">Publish opportunity</button>
       </form>
     </section>
   </main>
@@ -143,6 +88,7 @@
     <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/supabase.js"></script>
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="./js/main.js"></script>

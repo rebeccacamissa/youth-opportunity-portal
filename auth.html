@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Sign Up & Onboarding</title>
+  <title>Sign In or Register | Youth Opportunity Portal</title>
   <link rel="stylesheet" href="./css/style.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <header>
@@ -25,132 +24,64 @@
     </nav>
   </header>
 
-  <main class="container page-content">
-    <div class="auth-card">
-      <h1>Create Your Profile</h1>
-      <div id="auth-feedback" class="mb-3"></div>
+  <main class="container page-content auth-page">
+    <section class="auth-card" aria-labelledby="auth-heading">
+      <p class="auth-eyebrow">Your next step starts here</p>
+      <h1 id="auth-heading">Welcome to the portal</h1>
+      <p class="auth-intro">Sign in to continue, or create an account to save opportunities and share verified listings.</p>
 
-      <!-- STEP 1 FORM -->
-      <div id="signup-step-1">
-        <h2>Step 1: Personal Details</h2>
-        <form id="signup-step-1-form">
+      <div class="auth-tabs" role="tablist" aria-label="Account access">
+        <button class="auth-tab is-active" id="signin-tab" type="button" role="tab" aria-selected="true" aria-controls="signin-panel" data-auth-tab="signin">Sign In</button>
+        <button class="auth-tab" id="signup-tab" type="button" role="tab" aria-selected="false" aria-controls="signup-panel" data-auth-tab="signup">Sign Up</button>
+      </div>
+
+      <p id="auth-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+
+      <div id="signin-panel" role="tabpanel" aria-labelledby="signin-tab">
+        <form id="signin-form">
           <div class="form-group">
-            <label for="full-name">Full Name</label>
-            <input type="text" id="full-name" class="form-control" required placeholder="e.g. Jane Doe">
-          </div>
-          <div class="grid grid-2">
-            <div class="form-group">
-              <label for="age">Age</label>
-              <input type="number" id="age" class="form-control" min="15" max="100" required>
-            </div>
-            <div class="form-group">
-              <label for="country">Country of Origin</label>
-              <input type="text" id="country" class="form-control" required value="South Africa">
-            </div>
-          </div>
-          <div class="grid grid-2">
-            <div class="form-group">
-              <label for="phone">Phone Number</label>
-              <input type="tel" id="phone" class="form-control" required placeholder="071 234 5678">
-            </div>
-            <div class="form-group">
-              <label for="email">Email Address</label>
-              <input type="email" id="email" class="form-control" required placeholder="name@example.com">
-            </div>
+            <label for="signin-email">Email address</label>
+            <input type="email" id="signin-email" name="email" class="form-control" autocomplete="email" required>
           </div>
           <div class="form-group">
-            <label for="password">Password</label>
-            <input type="password" id="password" class="form-control" required minlength="6">
+            <label for="signin-password">Password</label>
+            <input type="password" id="signin-password" name="password" class="form-control" autocomplete="current-password" required>
           </div>
-          <div class="form-group">
-            <label for="highest-qualification">Highest Qualification</label>
-            <select id="highest-qualification" class="form-control" required>
-              <option value="">Select Qualification</option>
-              <option value="grade-11">Grade 11 or lower</option>
-              <option value="matric">Matric / Grade 12 Certificate</option>
-              <option value="diploma">National Diploma / Higher Certificate</option>
-              <option value="degree">Bachelor's Degree or Higher</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="user-interest">I am joining as a:</label>
-            <select id="user-interest" class="form-control" required>
-              <option value="">Select Your Path</option>
-              <option value="matriculant">Matriculant</option>
-              <option value="jobseeker">Job Seeker</option>
-              <option value="student">Tertiary Student</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary w-100">Continue to Step 2 →</button>
+          <button type="submit" class="btn btn-primary w-100">Sign In</button>
         </form>
       </div>
 
-      <!-- STEP 2 FORM (Conditional Inputs) -->
-      <div id="signup-step-2" style="display: none;">
-        <h2>Step 2: Pathway Specifics</h2>
-        <form id="signup-step-2-form">
-          
-          <!-- Conditional Fields: Matriculant -->
-          <div id="matriculant-fields" style="display: none;">
-            <div class="form-group">
-              <label for="report-link">Latest School Report Link (Google Drive / Cloud URL)</label>
-              <input type="url" id="report-link" class="form-control" placeholder="https://drive.google.com/...">
-            </div>
-            <div class="form-group">
-              <label for="matric-skills">Key Skills (Comma separated)</label>
-              <input type="text" id="matric-skills" class="form-control" placeholder="e.g. Communication, Problem Solving, MS Word">
-            </div>
-            <div class="form-group">
-              <label for="extracurriculars">Extracurricular Activities & Volunteer Work</label>
-              <textarea id="extracurriculars" class="form-control" rows="3"></textarea>
-            </div>
+      <div id="signup-panel" role="tabpanel" aria-labelledby="signup-tab" hidden>
+        <form id="signup-form">
+          <div class="form-group">
+            <label for="signup-full-name">Full name</label>
+            <input type="text" id="signup-full-name" name="full_name" class="form-control" autocomplete="name" maxlength="120" required>
           </div>
-
-          <!-- Conditional Fields: Job Seeker -->
-          <div id="jobseeker-fields" style="display: none;">
-            <div class="form-group">
-              <label for="jobseeker-cv">CV Link (Google Drive / Cloud URL)</label>
-              <input type="url" id="jobseeker-cv" class="form-control" placeholder="https://drive.google.com/file/...">
-            </div>
-            <div class="form-group">
-              <label for="target-industry">Target Industry</label>
-              <select id="target-industry" class="form-control">
-                <option value="it-software">IT & Software Development</option>
-                <option value="administration">Administration & Office Support</option>
-                <option value="retail-service">Retail & Customer Service</option>
-                <option value="trades">Trades & Technical</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="jobseeker-exp">Experience Level</label>
-              <select id="jobseeker-exp" class="form-control">
-                <option value="no-experience">No Experience (0 years)</option>
-                <option value="less-than-1">Less than 1 Year</option>
-                <option value="1-to-2">1 - 2 Years</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label for="signup-email">Email address</label>
+            <input type="email" id="signup-email" name="email" class="form-control" autocomplete="email" maxlength="254" required>
           </div>
-
-          <!-- Conditional Fields: Tertiary Student -->
-          <div id="student-fields" style="display: none;">
-            <div class="form-group">
-              <label for="current-qualification">Current Course / Qualification Enrolled In</label>
-              <input type="text" id="current-qualification" class="form-control" placeholder="e.g. Diploma in Information Technology">
-            </div>
-            <div class="form-group">
-              <label for="student-experience">Relevant Practical Experience / Projects</label>
-              <textarea id="student-experience" class="form-control" rows="3" placeholder="Briefly describe coursework or freelance projects..."></textarea>
-            </div>
-            <div class="form-group">
-              <label for="student-cv">CV Link (Google Drive / Cloud URL)</label>
-              <input type="url" id="student-cv" class="form-control" placeholder="https://drive.google.com/file/...">
-            </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" name="password" class="form-control" autocomplete="new-password" minlength="8" required>
+            <small class="form-text">Use at least 8 characters.</small>
           </div>
-
-          <button type="submit" class="btn btn-primary w-100">Complete Sign Up</button>
+          <div class="form-group">
+            <label for="signup-role">I am joining as a</label>
+            <select id="signup-role" name="role" class="form-control" required>
+              <option value="youth_user">Youth Job Seeker</option>
+              <option value="community_provider">Community Opportunity Provider</option>
+            </select>
+          </div>
+          <div class="form-group" id="organization-name-group" hidden>
+            <label for="signup-organization">Organization name (optional)</label>
+            <input type="text" id="signup-organization" name="organization_name" class="form-control" maxlength="160" autocomplete="organization">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Create Account</button>
         </form>
       </div>
-    </div>
+      <p class="auth-note">Provider accounts must be verified before they can publish or edit opportunities.</p>
+    </section>
   </main>
 
   <footer>
@@ -158,6 +89,7 @@
     <p class="site-disclaimer">Sample Opportunity / Demo Data only. Listings are not independently verified and may not represent live vacancies. Expired opportunities are excluded from active results after their closing date; sample records remain in the local dataset until it is maintained or replaced.</p>
   </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./js/supabase.js"></script>
   <script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
   <script src="./js/main.js"></script>
