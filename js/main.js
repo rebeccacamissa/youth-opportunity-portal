@@ -352,11 +352,38 @@ async function loadOpportunities() {
   if (!usesOpportunityData) return;
 
   try {
-    const response = await fetch('./data/opportunities.json');
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+    const [staticResult, remoteResult] = await Promise.allSettled([
+      fetch('./data/opportunities.json').then(response => {
+        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        return response.json();
+      }),
+      window.supabaseClient
+        ? window.supabaseClient
+            .from('opportunities')
+            .select('*')
+            .eq('is_published', true)
+            .then(({ data, error }) => {
+              if (error) throw error;
+              return data || [];
+            })
+        : Promise.resolve([])
+    ]);
+
+    if (staticResult.status === 'rejected' && remoteResult.status === 'rejected') {
+      throw staticResult.reason;
     }
-    globalOpportunities = await response.json();
+
+    const staticOpportunities = staticResult.status === 'fulfilled' ? staticResult.value : [];
+    const remoteOpportunities = remoteResult.status === 'fulfilled'
+      ? remoteResult.value.map(normalizeRemoteOpportunity)
+      : [];
+    if (staticResult.status === 'rejected') {
+      console.error('Static opportunities could not be loaded:', staticResult.reason);
+    }
+    if (remoteResult.status === 'rejected') {
+      console.error('Remote opportunities could not be loaded:', remoteResult.reason);
+    }
+    globalOpportunities = [...staticOpportunities, ...remoteOpportunities];
 
     // Determine current page to initialize specific logic
     if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
@@ -370,6 +397,30 @@ async function loadOpportunities() {
     console.error('Error loading opportunities data:', error);
     renderErrorMessage();
   }
+}
+
+function normalizeRemoteOpportunity(item) {
+  const requirements = Array.isArray(item.requirements)
+    ? item.requirements
+    : typeof item.requirements === 'string'
+      ? [item.requirements]
+      : [];
+
+  return {
+    ...item,
+    id: String(item.id),
+    organization: item.organization_name || item.organization || '',
+    shortDescription: item.short_description || item.description || '',
+    fullDescription: item.description || item.short_description || '',
+    applicationLink: item.application_url || item.applicationLink || '',
+    closingDate: item.closing_date || item.closingDate || '',
+    experienceLevel: item.experience_level || item.experienceLevel || '',
+    eligibility: requirements,
+    requirements,
+    isRemoteListing: true,
+    verifiedStatus: true,
+    updatedDate: item.updated_at || item.updatedDate || item.created_at || ''
+  };
 }
 
 /**
@@ -585,7 +636,7 @@ function renderCards(opportunities, targetContainerId) {
               ${escapeHTML(deadline.label)}
             </span>
           </div>
-          <span class="demo-data-badge">Sample Opportunity / Demo Data</span>
+          ${item.isRemoteListing ? '' : '<span class="demo-data-badge">Sample Opportunity / Demo Data</span>'}
           <h3 class="card-title">${escapeHTML(item.title || 'Untitled opportunity')}</h3>
           <p class="card-org">${escapeHTML(item.organization || 'Organisation not provided')}</p>
           <p class="card-description">${escapeHTML(item.shortDescription || getOpportunityDescription(item) || 'Description not provided.')}</p>
