@@ -1,5 +1,6 @@
 const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jD_L6Kc2wWNecORjKzgkbw_-OXRdxO7';
+window.PORTAL_API_BASE_URL = window.PORTAL_API_BASE_URL || 'http://localhost:5000/api';
 const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
 
 window.supabaseClient = supabaseClient;
@@ -68,6 +69,8 @@ function renderAuthNavigation(user, profile) {
     ? 'Community Provider'
     : profile?.role === 'youth_user'
       ? 'Youth Job Seeker'
+      : profile?.role === 'high_school_student'
+        ? 'High School Student / Matriculant'
       : 'Profile unavailable';
   identity.append(name, role);
   addItem(identity);
@@ -202,23 +205,98 @@ function setAuthTab(mode, moveFocus = false) {
 
 function initAuthForms() {
   const signinForm = document.getElementById('signin-form');
-  const signupForm = document.getElementById('signup-form');
-  if (!signinForm || !signupForm) return;
+  const signupStepOne = document.getElementById('signup-step-1-form');
+  const signupStepTwo = document.getElementById('signup-step-2-form');
+  if (!signinForm || !signupStepOne || !signupStepTwo) return;
 
   document.querySelectorAll('[data-auth-tab]').forEach(tab => {
     tab.addEventListener('click', () => setAuthTab(tab.dataset.authTab));
   });
 
   const roleSelect = document.getElementById('signup-role');
-  const organizationGroup = document.getElementById('organization-name-group');
-  const organizationInput = document.getElementById('signup-organization');
-  const updateOrganizationField = () => {
-    const isProvider = roleSelect.value === 'community_provider';
-    organizationGroup.hidden = !isProvider;
-    organizationInput.required = false;
+  const stepLabel = document.getElementById('signup-step-label');
+  const progress = document.querySelector('.auth-step-progress-track');
+  const progressFill = document.getElementById('signup-step-progress');
+  const roleSections = [...signupStepTwo.querySelectorAll('[data-role-fields]')];
+  const setRoleFields = () => {
+    roleSections.forEach(section => {
+      const active = section.dataset.roleFields === roleSelect.value;
+      section.hidden = !active;
+      section.querySelectorAll('input, select, textarea').forEach(control => {
+        control.disabled = !active;
+      });
+    });
   };
-  roleSelect.addEventListener('change', updateOrganizationField);
-  updateOrganizationField();
+  const setSignupStep = step => {
+    const showDetails = step === 2;
+    signupStepOne.hidden = showDetails;
+    signupStepTwo.hidden = !showDetails;
+    stepLabel.textContent = showDetails
+      ? 'Step 2 of 2: Profile Details'
+      : 'Step 1 of 2: Core Credentials';
+    progress.setAttribute('aria-valuenow', String(step));
+    progressFill.style.width = showDetails ? '100%' : '50%';
+    if (showDetails) {
+      setRoleFields();
+      signupStepTwo.querySelector('[data-role-fields]:not([hidden]) input:not(:disabled), [data-role-fields]:not([hidden]) select:not(:disabled), [data-role-fields]:not([hidden]) textarea:not(:disabled)')?.focus();
+    } else {
+      document.getElementById('signup-full-name').focus();
+    }
+    showAuthFeedback('');
+  };
+  roleSelect.addEventListener('change', setRoleFields);
+  setRoleFields();
+
+  document.getElementById('signup-next-step').addEventListener('click', () => {
+    if (!signupStepOne.reportValidity()) return;
+    setSignupStep(2);
+  });
+  document.getElementById('signup-back-step').addEventListener('click', () => setSignupStep(1));
+
+  signupStepTwo.querySelectorAll('[data-required-choices]').forEach(group => {
+    group.addEventListener('change', () => {
+      group.classList.remove('has-choice-error');
+      const activeSection = group.closest('[data-role-fields]');
+      activeSection.querySelectorAll('[data-required-choices] input').forEach(input => {
+        input.setCustomValidity('');
+      });
+    });
+  });
+
+  const getStepTwoData = () => {
+    const fields = new FormData(signupStepTwo);
+    const details = Object.fromEntries(fields.entries());
+    if (roleSelect.value === 'high_school_student') {
+      details.interests = fields.getAll('interests');
+    } else if (roleSelect.value === 'community_provider') {
+      details.focus_areas = fields.getAll('focus_areas');
+    }
+    return details;
+  };
+
+  const validateStepTwo = () => {
+    if (!signupStepTwo.reportValidity()) return false;
+    const activeSection = roleSections.find(item => item.dataset.roleFields === roleSelect.value);
+    const emptyChoiceGroup = [...activeSection.querySelectorAll('[data-required-choices]')]
+      .find(group => !group.querySelector('input:checked'));
+    if (emptyChoiceGroup) {
+      emptyChoiceGroup.classList.add('has-choice-error');
+      showAuthFeedback('Select at least one option to continue.', 'text-danger');
+      emptyChoiceGroup.querySelector('input')?.focus();
+      return false;
+    }
+    return true;
+  };
+
+  const showSignupSuccess = (message) => {
+    const dialog = document.getElementById('signup-success-dialog');
+    document.getElementById('signup-success-message').textContent = message;
+    if (typeof dialog.showModal === 'function') dialog.showModal();
+    else showAuthFeedback(message, 'text-success');
+  };
+  document.getElementById('signup-success-close').addEventListener('click', () => {
+    document.getElementById('signup-success-dialog').close();
+  });
 
   const mode = new URLSearchParams(window.location.search).get('mode');
   setAuthTab(mode === 'signup' ? 'signup' : 'signin');
@@ -267,49 +345,57 @@ function initAuthForms() {
     }
   });
 
-  signupForm.addEventListener('submit', async event => {
+  signupStepTwo.addEventListener('submit', async event => {
     event.preventDefault();
+    if (!validateStepTwo()) return;
     if (!supabaseClient) {
       showAuthFeedback('The registration service is unavailable. Please try again later.', 'text-danger');
       return;
     }
 
-    const button = signupForm.querySelector('button[type="submit"]');
+    const button = document.getElementById('signup-submit');
     button.disabled = true;
-    button.textContent = 'Creating account…';
-    showAuthFeedback('Creating your account…');
+    button.textContent = 'Creating account...';
+    showAuthFeedback('Creating your account...');
 
     try {
-      const formData = new FormData(signupForm);
-      const fullName = String(formData.get('full_name')).trim();
-      const email = String(formData.get('email')).trim();
-      const role = String(formData.get('role'));
-      const organizationName = String(formData.get('organization_name') || '').trim();
-      if (!['youth_user', 'community_provider'].includes(role)) {
+      const fullName = document.getElementById('signup-full-name').value.trim();
+      const email = document.getElementById('signup-email').value.trim();
+      const password = document.getElementById('signup-password').value;
+      const role = roleSelect.value;
+      if (!['high_school_student', 'youth_user', 'community_provider'].includes(role)) {
         throw new Error('Choose a valid account type.');
       }
+      const profileDetails = getStepTwoData();
+      const organizationName = role === 'community_provider' ? profileDetails.organization_name : null;
       const { data, error } = await supabaseClient.auth.signUp({
         email,
-        password: String(formData.get('password')),
+        password,
         options: {
           data: {
             full_name: fullName,
             role,
-            organization_name: role === 'community_provider' ? organizationName : null
+            organization_name: organizationName,
+            profile_details: profileDetails
           }
         }
       });
       if (error) throw error;
+      if (!data.user) throw new Error('Supabase did not return the newly registered user.');
 
-      if (!data.session) {
-        showAuthFeedback('Account created. Check your email to confirm your address before signing in.', 'text-success');
-      } else if (role === 'community_provider') {
-        showAuthFeedback('Account created. Your provider profile must be verified before you can post opportunities.', 'text-success');
-        window.setTimeout(() => { window.location.href = 'index.html'; }, 1500);
-      } else {
-        showAuthFeedback('Account created successfully. Redirecting…', 'text-success');
-        window.setTimeout(() => { window.location.href = 'index.html'; }, 700);
+      if (data.session) {
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .update({ profile_details: profileDetails })
+          .eq('id', data.user.id);
+        if (profileError) throw profileError;
       }
+      const confirmationMessage = !data.session
+        ? 'Your profile has been saved. Check your email to confirm your address before signing in.'
+        : role === 'community_provider'
+          ? 'Your provider profile has been saved. An administrator must verify your organization before you can publish opportunities.'
+          : 'Your profile has been saved. You can now explore opportunities matched to your interests.';
+      showSignupSuccess(confirmationMessage);
     } catch (error) {
       console.error('Account registration failed:', error);
       showAuthFeedback(error.message || 'Unable to create your account. Please try again.', 'text-danger');
@@ -321,7 +407,7 @@ function initAuthForms() {
 }
 
 async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
-  if (!supabaseClient || !window.portalUser || window.portalProfile?.role !== 'youth_user') {
+  if (!supabaseClient || !window.portalUser || !['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
     throw new Error('Sign in with a youth account to sync saved opportunities.');
   }
 
@@ -345,7 +431,7 @@ async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
 }
 
 async function loadSavedOpportunitiesForCurrentUser() {
-  if (!supabaseClient || !window.portalUser || window.portalProfile?.role !== 'youth_user') {
+  if (!supabaseClient || !window.portalUser || !['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
     throw new Error('Sign in with a youth account to load saved opportunities.');
   }
   const { data, error } = await supabaseClient
@@ -418,24 +504,24 @@ async function handleContactSubmission(event) {
 
   feedbackEl.className = 'mb-3';
   feedbackEl.textContent = '';
-  if (!supabaseClient) {
-    feedbackEl.classList.add('text-danger');
-    feedbackEl.textContent = 'The contact service is unavailable. Please try again later.';
-    return;
-  }
-
   submitButton.disabled = true;
   feedbackEl.textContent = 'Sending your message…';
   try {
-    const { error } = await supabaseClient.from('contact_submissions').insert({
-      submission_type: String(formData.get('type')).trim(),
-      name: String(formData.get('name')).trim(),
-      email: String(formData.get('email')).trim(),
-      subject: String(formData.get('subject')).trim(),
-      listing_url: String(formData.get('listing_url') || '').trim() || null,
-      message: String(formData.get('message')).trim()
+    const endpoint = form.dataset.apiEndpoint || '/requests';
+    const response = await fetch(`${window.PORTAL_API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: String(formData.get('type')).trim(),
+        name: String(formData.get('name')).trim(),
+        email: String(formData.get('email')).trim(),
+        subject: String(formData.get('subject')).trim(),
+        listing_url: String(formData.get('listing_url') || '').trim() || null,
+        message: String(formData.get('message')).trim()
+      })
     });
-    if (error) throw error;
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || 'The request could not be submitted.');
 
     form.reset();
     feedbackEl.className = 'mb-3 text-success';
@@ -443,7 +529,7 @@ async function handleContactSubmission(event) {
   } catch (error) {
     console.error('Contact form submission failed:', error);
     feedbackEl.className = 'mb-3 text-danger';
-    feedbackEl.textContent = 'We could not submit your message. Please try again later.';
+    feedbackEl.textContent = error.message || 'We could not submit your message. Please try again later.';
   } finally {
     submitButton.disabled = false;
   }

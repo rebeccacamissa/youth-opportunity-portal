@@ -1452,6 +1452,124 @@ input[type="radio"] {
   background: #f0ede4;
 }
 
+.auth-step-progress {
+  margin: 1.25rem 0;
+}
+
+.auth-step-progress-heading {
+  margin-bottom: 0.5rem;
+  font-weight: 800;
+}
+
+.auth-step-progress-track {
+  height: 0.8rem;
+  overflow: hidden;
+  border: 2px solid var(--text-color);
+  border-radius: 999px;
+  background: #f0ede4;
+}
+
+.auth-step-progress-track > span {
+  display: block;
+  width: 50%;
+  height: 100%;
+  border-right: 2px solid var(--text-color);
+  background: var(--secondary-color);
+  transition: width 240ms ease;
+}
+
+.auth-step-panel:not([hidden]) {
+  animation: auth-step-enter 240ms ease both;
+}
+
+.signup-role-fields > h2 {
+  margin-bottom: 1.25rem;
+  font-size: 1.35rem;
+}
+
+.choice-group {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice-group legend {
+  margin-bottom: 0.5rem;
+  font-weight: 800;
+}
+
+.choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.5rem;
+}
+
+.choice-grid label {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0.45rem 0.65rem;
+  border: 2px solid var(--text-color);
+  border-radius: 5px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.choice-grid input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+  accent-color: var(--primary-color);
+}
+
+.choice-group.has-choice-error {
+  outline: 2px solid var(--error-color);
+  outline-offset: 4px;
+}
+
+.auth-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.auth-success-dialog {
+  width: min(92vw, 34rem);
+  padding: 0;
+  border: 3px solid var(--text-color);
+  border-radius: var(--radius);
+  background: var(--card-background);
+  box-shadow: 8px 8px 0 var(--text-color);
+  color: var(--text-color);
+}
+
+.auth-success-dialog::backdrop {
+  background: rgba(17, 17, 17, 0.68);
+}
+
+.auth-success-content {
+  padding: 2rem;
+}
+
+.auth-success-content .btn {
+  margin: 0.35rem 0.5rem 0.35rem 0;
+}
+
+@keyframes auth-step-enter {
+  from {
+    transform: translateX(0.75rem);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .auth-tab {
   min-height: 2.7rem;
   padding: 0.55rem 0.8rem;
@@ -1976,5 +2094,15 @@ body > footer p {
 
   .opportunity-card::before {
     display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .auth-step-actions {
+    flex-direction: column-reverse;
+  }
+
+  .auth-step-actions .btn {
+    width: 100%;
   }
 }

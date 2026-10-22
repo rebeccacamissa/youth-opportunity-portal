@@ -52,7 +52,16 @@
       </div>
 
       <div id="signup-panel" role="tabpanel" aria-labelledby="signup-tab" hidden>
-        <form id="signup-form">
+        <div class="auth-step-progress" aria-live="polite">
+          <div class="auth-step-progress-heading">
+            <span id="signup-step-label">Step 1 of 2: Core Credentials</span>
+          </div>
+          <div class="auth-step-progress-track" role="progressbar" aria-label="Registration progress" aria-valuemin="1" aria-valuemax="2" aria-valuenow="1">
+            <span id="signup-step-progress"></span>
+          </div>
+        </div>
+
+        <form id="signup-step-1-form" class="auth-step-panel" novalidate>
           <div class="form-group">
             <label for="signup-full-name">Full name</label>
             <input type="text" id="signup-full-name" name="full_name" class="form-control" autocomplete="name" maxlength="120" required>
@@ -69,20 +78,115 @@
           <div class="form-group">
             <label for="signup-role">I am joining as a</label>
             <select id="signup-role" name="role" class="form-control" required>
+              <option value="">Select your role</option>
+              <option value="high_school_student">High School Student / Matriculant</option>
               <option value="youth_user">Youth Job Seeker</option>
               <option value="community_provider">Community Opportunity Provider</option>
             </select>
           </div>
-          <div class="form-group" id="organization-name-group" hidden>
-            <label for="signup-organization">Organization name (optional)</label>
-            <input type="text" id="signup-organization" name="organization_name" class="form-control" maxlength="160" autocomplete="organization">
+          <button type="button" id="signup-next-step" class="btn btn-primary w-100">Next Step</button>
+        </form>
+
+        <form id="signup-step-2-form" class="auth-step-panel" hidden>
+          <section class="signup-role-fields" data-role-fields="high_school_student" aria-labelledby="student-profile-heading" hidden>
+            <h2 id="student-profile-heading">Student Profile</h2>
+            <div class="form-group">
+              <label for="student-grade">Latest school report / current grade</label>
+              <select id="student-grade" name="current_grade" class="form-control" required>
+                <option value="">Select your grade</option>
+                <option>Grade 9</option><option>Grade 10</option><option>Grade 11</option>
+                <option>Grade 12 / Matric in progress</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="student-experience">Volunteering &amp; extracurricular experience</label>
+              <textarea id="student-experience" name="experience" class="form-control" maxlength="3000" required placeholder="Describe school leadership, community service, or volunteer work"></textarea>
+            </div>
+            <fieldset class="form-group choice-group" data-required-choices="student-interests">
+              <legend>Preferred fields of interest <span class="form-text">(Select at least one)</span></legend>
+              <div class="choice-grid">
+                <label><input type="checkbox" name="interests" value="Bursaries"> Bursaries</label>
+                <label><input type="checkbox" name="interests" value="STEM"> STEM</label>
+                <label><input type="checkbox" name="interests" value="Arts"> Arts</label>
+                <label><input type="checkbox" name="interests" value="Vocational Trades"> Vocational Trades</label>
+                <label><input type="checkbox" name="interests" value="University Preparation"> University Preparation</label>
+              </div>
+            </fieldset>
+          </section>
+
+          <section class="signup-role-fields" data-role-fields="youth_user" aria-labelledby="jobseeker-profile-heading" hidden>
+            <h2 id="jobseeker-profile-heading">Job Seeker Profile</h2>
+            <div class="form-group">
+              <label for="jobseeker-qualification">Highest qualification achieved</label>
+              <select id="jobseeker-qualification" name="qualification" class="form-control" required>
+                <option value="">Select your qualification</option>
+                <option>Matric / Grade 12 Certificate</option><option>NQF Level 4/5</option>
+                <option>Diploma</option><option>Bachelor's Degree</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="jobseeker-experience">Work &amp; internship experience</label>
+              <textarea id="jobseeker-experience" name="experience" class="form-control" maxlength="3000" required placeholder="Include past roles, customer service, or project work"></textarea>
+            </div>
+            <div class="form-group">
+              <label for="jobseeker-skills">Key technical &amp; soft skills</label>
+              <input type="text" id="jobseeker-skills" name="skills" class="form-control" maxlength="1000" required placeholder="e.g., Web Development, Communication, Administration">
+            </div>
+            <div class="form-group">
+              <label for="jobseeker-cv">CV upload / link</label>
+              <input type="url" id="jobseeker-cv" name="cv_url" class="form-control" maxlength="2048" placeholder="https://example.com/my-cv.pdf">
+              <small class="form-text">Paste a link to your CV or portfolio. You can add a file-upload service later.</small>
+            </div>
+          </section>
+
+          <section class="signup-role-fields" data-role-fields="community_provider" aria-labelledby="provider-profile-heading" hidden>
+            <h2 id="provider-profile-heading">Organization Profile</h2>
+            <div class="form-group">
+              <label for="signup-organization">Organization / company name</label>
+              <input type="text" id="signup-organization" name="organization_name" class="form-control" maxlength="160" autocomplete="organization" required>
+            </div>
+            <div class="form-group">
+              <label for="provider-organization-type">Organization type</label>
+              <select id="provider-organization-type" name="organization_type" class="form-control" required>
+                <option value="">Select organization type</option>
+                <option>Non-Profit / NGO</option><option>Corporate Employer</option>
+                <option>Educational Institution</option><option>Local Government</option><option>Small Business</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="provider-website">Official website / LinkedIn page URL</label>
+              <input type="url" id="provider-website" name="website_url" class="form-control" maxlength="2048" placeholder="https://example.org">
+            </div>
+            <fieldset class="form-group choice-group" data-required-choices="provider-focus">
+              <legend>Opportunity focus areas <span class="form-text">(Select at least one)</span></legend>
+              <div class="choice-grid">
+                <label><input type="checkbox" name="focus_areas" value="Internships"> Internships</label>
+                <label><input type="checkbox" name="focus_areas" value="Learnerships"> Learnerships</label>
+                <label><input type="checkbox" name="focus_areas" value="Bursaries"> Bursaries</label>
+                <label><input type="checkbox" name="focus_areas" value="Entry-Level Jobs"> Entry-Level Jobs</label>
+              </div>
+            </fieldset>
+          </section>
+
+          <div class="auth-step-actions">
+            <button type="button" id="signup-back-step" class="btn btn-secondary">Back to Step 1</button>
+            <button type="submit" id="signup-submit" class="btn btn-primary">Create Account</button>
           </div>
-          <button type="submit" class="btn btn-primary w-100">Create Account</button>
         </form>
       </div>
       <p class="auth-note">Provider accounts must be verified before they can publish or edit opportunities.</p>
     </section>
   </main>
+
+  <dialog id="signup-success-dialog" class="auth-success-dialog" aria-labelledby="signup-success-heading">
+    <div class="auth-success-content">
+      <p class="auth-eyebrow">Registration complete</p>
+      <h2 id="signup-success-heading">Your account is ready</h2>
+      <p id="signup-success-message"></p>
+      <a class="btn btn-primary" href="opportunities.html">Explore opportunities</a>
+      <button type="button" id="signup-success-close" class="btn btn-secondary">Close</button>
+    </div>
+  </dialog>
 
   <footer>
     <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>

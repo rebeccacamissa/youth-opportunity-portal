@@ -1,0 +1,45 @@
+@baseUrl = http://localhost:5000
+@requestId = paste-request-id-from-create-response-here
+
+### Health check
+GET {{baseUrl}}/api/health
+
+### Proxy live opportunities from Supabase
+GET {{baseUrl}}/api/opportunities
+
+### Create a general enquiry
+POST {{baseUrl}}/api/requests
+Content-Type: application/json
+
+{
+  "type": "general",
+  "name": "Example User",
+  "email": "example@example.org",
+  "subject": "Question about an opportunity",
+  "message": "Please share more information."
+}
+
+### List requests created since this server started
+GET {{baseUrl}}/api/requests
+
+### Get one request
+GET {{baseUrl}}/api/requests/{{requestId}}
+
+### Update the request status
+PATCH {{baseUrl}}/api/requests/{{requestId}}
+Content-Type: application/json
+
+{
+  "status": "resolved"
+}
+
+### Replace request status (PUT accepts the same status field)
+PUT {{baseUrl}}/api/requests/{{requestId}}
+Content-Type: application/json
+
+{
+  "status": "pending"
+}
+
+### Delete a request
+DELETE {{baseUrl}}/api/requests/{{requestId}}

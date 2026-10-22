@@ -34,7 +34,7 @@ async function initializeSavedOpportunities() {
   savedOpportunityIds.clear();
   loadSavedOpportunityIds().forEach(id => savedOpportunityIds.add(id));
 
-  if (window.portalProfile?.role === 'youth_user' && typeof window.loadSavedOpportunitiesForCurrentUser === 'function') {
+  if (['high_school_student', 'youth_user'].includes(window.portalProfile?.role) && typeof window.loadSavedOpportunitiesForCurrentUser === 'function') {
     try {
       const cloudSavedIds = await window.loadSavedOpportunitiesForCurrentUser();
       cloudSavedIds.forEach(id => savedOpportunityIds.add(id));
@@ -98,7 +98,7 @@ function initSavedOpportunityControls() {
 
     button.disabled = true;
     try {
-      if (window.portalProfile?.role === 'youth_user' && typeof window.saveOpportunityForCurrentUser === 'function') {
+      if (['high_school_student', 'youth_user'].includes(window.portalProfile?.role) && typeof window.saveOpportunityForCurrentUser === 'function') {
         await window.saveOpportunityForCurrentUser(id, !wasSaved);
       }
     } catch (error) {
@@ -352,11 +352,15 @@ async function loadOpportunities() {
   if (!usesOpportunityData) return;
 
   try {
-    const response = await fetch('./data/opportunities.json');
+    const response = await fetch(`${window.PORTAL_API_BASE_URL}/opportunities`);
     if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`);
+      const errorBody = await response.json().catch(() => ({}));
+      throw new Error(errorBody.message || `HTTP error! Status: ${response.status}`);
     }
     globalOpportunities = await response.json();
+    if (!Array.isArray(globalOpportunities)) {
+      throw new Error('The opportunity API returned an invalid response.');
+    }
 
     // Determine current page to initialize specific logic
     if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {

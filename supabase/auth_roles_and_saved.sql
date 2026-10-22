@@ -7,8 +7,9 @@ create table if not exists public.profiles (
   full_name text not null,
   email text not null,
   role text not null default 'youth_user'
-    check (role in ('youth_user', 'community_provider')),
+    check (role in ('high_school_student', 'youth_user', 'community_provider')),
   organization_name text,
+  profile_details jsonb not null default '{}'::jsonb,
   is_verified boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -18,6 +19,7 @@ alter table public.profiles
   add column if not exists email text,
   add column if not exists role text default 'youth_user',
   add column if not exists organization_name text,
+  add column if not exists profile_details jsonb not null default '{}'::jsonb,
   add column if not exists is_verified boolean not null default false,
   add column if not exists created_at timestamptz not null default now();
 
@@ -30,7 +32,7 @@ set full_name = coalesce(
     ),
     email = coalesce(nullif(p.email, ''), u.email, ''),
     role = case
-      when p.role in ('youth_user', 'community_provider') then p.role
+      when p.role in ('high_school_student', 'youth_user', 'community_provider') then p.role
       else 'youth_user'
     end
 from auth.users u
@@ -47,11 +49,12 @@ alter table public.profiles
   drop constraint if exists provider_requires_organization;
 alter table public.profiles
   add constraint profiles_role_check
-    check (role in ('youth_user', 'community_provider'));
+    check (role in ('high_school_student', 'youth_user', 'community_provider'));
 
 alter table public.profiles enable row level security;
 revoke all on public.profiles from public, anon, authenticated;
 grant select on public.profiles to authenticated;
+grant update (profile_details) on public.profiles to authenticated;
 
 do $$
 declare
@@ -75,6 +78,14 @@ create policy "Users can read their own profile"
   to authenticated
   using (id = (select auth.uid()));
 
+drop policy if exists "Users can update their own profile details" on public.profiles;
+create policy "Users can update their own profile details"
+  on public.profiles
+  for update
+  to authenticated
+  using (id = (select auth.uid()))
+  with check (id = (select auth.uid()));
+
 create or replace function public.handle_new_portal_user()
 returns trigger
 language plpgsql
@@ -84,21 +95,28 @@ as $$
 declare
   requested_role text;
   requested_organization text;
+  requested_profile_details jsonb;
 begin
   requested_role := new.raw_user_meta_data ->> 'role';
   requested_organization := nullif(btrim(new.raw_user_meta_data ->> 'organization_name'), '');
+  requested_profile_details := case
+    when jsonb_typeof(new.raw_user_meta_data -> 'profile_details') = 'object'
+      then new.raw_user_meta_data -> 'profile_details'
+    else '{}'::jsonb
+  end;
 
-  if requested_role is null or requested_role not in ('youth_user', 'community_provider') then
+  if requested_role is null or requested_role not in ('high_school_student', 'youth_user', 'community_provider') then
     requested_role := 'youth_user';
   end if;
 
-  insert into public.profiles (id, full_name, email, role, organization_name)
+  insert into public.profiles (id, full_name, email, role, organization_name, profile_details)
   values (
     new.id,
     coalesce(nullif(btrim(new.raw_user_meta_data ->> 'full_name'), ''), split_part(new.email, '@', 1)),
     new.email,
     requested_role,
-    case when requested_role = 'community_provider' then requested_organization else null end
+    case when requested_role = 'community_provider' then requested_organization else null end,
+    requested_profile_details
   )
   on conflict (id) do nothing;
 
@@ -315,7 +333,7 @@ create policy "Youth can read their own saved opportunities"
       select 1
       from public.profiles p
       where p.id = (select auth.uid())
-        and p.role = 'youth_user'
+        and p.role in ('high_school_student', 'youth_user')
     )
   );
 
@@ -330,7 +348,7 @@ create policy "Youth can save opportunities to their account"
       select 1
       from public.profiles p
       where p.id = (select auth.uid())
-        and p.role = 'youth_user'
+        and p.role in ('high_school_student', 'youth_user')
     )
   );
 
@@ -345,7 +363,7 @@ create policy "Youth can remove their own saved opportunities"
       select 1
       from public.profiles p
       where p.id = (select auth.uid())
-        and p.role = 'youth_user'
+        and p.role in ('high_school_student', 'youth_user')
     )
   );
 
@@ -360,7 +378,7 @@ create policy "Youth can update their own saved opportunities"
       select 1
       from public.profiles p
       where p.id = (select auth.uid())
-        and p.role = 'youth_user'
+        and p.role in ('high_school_student', 'youth_user')
     )
   )
   with check (
@@ -369,7 +387,7 @@ create policy "Youth can update their own saved opportunities"
       select 1
       from public.profiles p
       where p.id = (select auth.uid())
-        and p.role = 'youth_user'
+        and p.role in ('high_school_student', 'youth_user')
     )
   );
 
