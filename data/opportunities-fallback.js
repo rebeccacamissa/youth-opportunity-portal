@@ -1,0 +1,106 @@
+// Keep in sync with opportunities.json; file-origin browsers may block fetching JSON.
+window.PORTAL_STATIC_OPPORTUNITIES = [
+  {
+    "id": 1,
+    "title": "Software Development Internship",
+    "organization": "Tech4Youth Academy",
+    "category": "Internship",
+    "location": "Cape Town",
+    "closingDate": "2026-10-14",
+    "experienceLevel": "Entry Level",
+    "shortDescription": "A 12-month paid practical internship focusing on web development.",
+    "fullDescription": "Join Tech4Youth for a hands-on learning experience building real-world web applications using modern web tools and technologies.",
+    "eligibility": [
+      "Basic understanding of web technologies",
+      "South African citizenship"
+    ],
+    "qualifications": [
+      "Grade 12 / Matric Certificate"
+    ],
+    "requirements": [
+      "Grade 12 / Matric Certificate",
+      "Basic understanding of web technologies",
+      "South African citizenship"
+    ],
+    "documents": [
+      "Certified Copy of ID",
+      "Updated CV",
+      "Academic Transcript"
+    ],
+    "stipend": null,
+    "workArrangement": null,
+    "applicationInstructions": [],
+    "sourceUrl": null,
+    "applicationLink": null,
+    "verifiedStatus": false,
+    "updatedDate": "2026-10-01"
+  },
+  {
+    "id": 2,
+    "title": "Digital Skills Learnership 2027",
+    "organization": "Cape Skills Development Trust",
+    "category": "Learnership",
+    "location": "Johannesburg",
+    "closingDate": "2026-12-15",
+    "experienceLevel": "No Experience",
+    "shortDescription": "NQF Level 4 accredited training program with monthly stipend.",
+    "fullDescription": "Full-time 12-month learnership covering digital literacy, business administration, and IT support fundamentals.",
+    "eligibility": [
+      "Aged between 18 and 28",
+      "Currently unemployed"
+    ],
+    "qualifications": [
+      "Grade 12 passed"
+    ],
+    "requirements": [
+      "Aged between 18 and 28",
+      "Currently unemployed",
+      "Grade 12 passed"
+    ],
+    "documents": [
+      "ID Copy",
+      "Proof of Address",
+      "Comprehensive CV"
+    ],
+    "stipend": null,
+    "workArrangement": null,
+    "applicationInstructions": [],
+    "sourceUrl": null,
+    "applicationLink": null,
+    "verifiedStatus": false,
+    "updatedDate": "2026-10-04"
+  },
+  {
+    "id": 3,
+    "title": "STEM Undergraduate Bursary",
+    "organization": "Future Leaders Fund",
+    "category": "Bursary",
+    "location": "Remote / Nationwide",
+    "closingDate": "2026-11-15",
+    "experienceLevel": "No Experience",
+    "shortDescription": "Comprehensive tuition and textbook funding for tertiary science students.",
+    "fullDescription": "Provides full tuition coverage, accommodation allowances, and personal mentorship for students pursuing STEM degrees.",
+    "eligibility": [
+      "Accepted into a public South African university"
+    ],
+    "qualifications": [
+      "Minimum 65% academic average in Grade 12 or 1st year university"
+    ],
+    "requirements": [
+      "Accepted into a public South African university",
+      "Minimum 65% academic average in Grade 12 or 1st year university"
+    ],
+    "documents": [
+      "Proof of University Registration",
+      "Certified ID Copy",
+      "Proof of Household Income"
+    ],
+    "stipend": null,
+    "workArrangement": null,
+    "applicationInstructions": [],
+    "sourceUrl": null,
+    "applicationLink": null,
+    "verifiedStatus": false,
+    "updatedDate": "2026-09-28"
+  }
+];

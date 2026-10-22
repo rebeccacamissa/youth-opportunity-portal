@@ -352,14 +352,31 @@ async function loadOpportunities() {
   if (!usesOpportunityData) return;
 
   try {
-    const response = await fetch(`${window.PORTAL_API_BASE_URL}/opportunities`);
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(errorBody.message || `HTTP error! Status: ${response.status}`);
+    const [staticResult, remoteResult] = await Promise.allSettled([
+      loadStaticOpportunities(),
+      loadPublishedOpportunities()
+    ]);
+
+    let staticOpportunities = [];
+    if (staticResult.status === 'fulfilled' && Array.isArray(staticResult.value)) {
+      staticOpportunities = staticResult.value;
+    } else {
+      if (staticResult.status === 'fulfilled') {
+        console.error('Static opportunities could not be loaded: the JSON response was not an array.');
+      } else {
+        console.error('Static opportunities could not be loaded:', staticResult.reason);
+      }
+      const localFallback = window.PORTAL_STATIC_OPPORTUNITIES;
+      if (Array.isArray(localFallback)) {
+        staticOpportunities = localFallback;
+      }
     }
-    globalOpportunities = await response.json();
-    if (!Array.isArray(globalOpportunities)) {
-      throw new Error('The opportunity API returned an invalid response.');
+
+    const remoteOpportunities = remoteResult.status === 'fulfilled' ? remoteResult.value : [];
+    if (remoteResult.status === 'rejected') console.error('Remote opportunities could not be loaded:', remoteResult.reason);
+    globalOpportunities = [...staticOpportunities, ...remoteOpportunities];
+    if (!globalOpportunities.length && staticResult.status === 'rejected' && remoteResult.status === 'rejected') {
+      throw staticResult.reason;
     }
 
     // Determine current page to initialize specific logic
@@ -374,6 +391,53 @@ async function loadOpportunities() {
     console.error('Error loading opportunities data:', error);
     renderErrorMessage();
   }
+}
+
+async function loadStaticOpportunities() {
+  const response = await fetch(new URL('./data/opportunities.json', document.baseURI));
+  if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+  const data = await response.json();
+  if (!Array.isArray(data)) throw new Error('The static opportunities response was not an array.');
+  return data;
+}
+
+async function loadPublishedOpportunities() {
+  if (!window.supabaseClient) return [];
+
+  const { data, error } = await window.supabaseClient
+    .from('opportunities')
+    .select('*')
+    .eq('is_published', true);
+  if (error) throw error;
+  if (data !== null && !Array.isArray(data)) {
+    throw new Error('Supabase returned an invalid opportunities response.');
+  }
+  return (data || []).map(normalizeRemoteOpportunity);
+}
+
+function normalizeRemoteOpportunity(item) {
+  const requirements = Array.isArray(item.requirements)
+    ? item.requirements
+    : typeof item.requirements === 'string'
+      ? [item.requirements]
+      : [];
+
+  return {
+    ...item,
+    id: String(item.id),
+    organization: item.organization_name || item.organization || '',
+    shortDescription: item.short_description || item.description || '',
+    fullDescription: item.description || item.short_description || '',
+    applicationLink: item.application_url || item.applicationLink || '',
+    closingDate: item.closing_date || item.closingDate || '',
+    experienceLevel: item.experience_level || item.experienceLevel || '',
+    eligibility: requirements,
+    requirements,
+    isRemoteListing: true,
+    verifiedStatus: true,
+    updatedDate: item.updated_at || item.updatedDate || item.created_at || ''
+  };
 }
 
 /**
@@ -589,7 +653,7 @@ function renderCards(opportunities, targetContainerId) {
               ${escapeHTML(deadline.label)}
             </span>
           </div>
-          <span class="demo-data-badge">Sample Opportunity / Demo Data</span>
+          ${item.isRemoteListing ? '' : '<span class="demo-data-badge">Sample Opportunity / Demo Data</span>'}
           <h3 class="card-title">${escapeHTML(item.title || 'Untitled opportunity')}</h3>
           <p class="card-org">${escapeHTML(item.organization || 'Organisation not provided')}</p>
           <p class="card-description">${escapeHTML(item.shortDescription || getOpportunityDescription(item) || 'Description not provided.')}</p>

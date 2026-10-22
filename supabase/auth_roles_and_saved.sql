@@ -11,7 +11,8 @@ create table if not exists public.profiles (
   organization_name text,
   profile_details jsonb not null default '{}'::jsonb,
   is_verified boolean not null default false,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
 
 alter table public.profiles
@@ -21,7 +22,8 @@ alter table public.profiles
   add column if not exists organization_name text,
   add column if not exists profile_details jsonb not null default '{}'::jsonb,
   add column if not exists is_verified boolean not null default false,
-  add column if not exists created_at timestamptz not null default now();
+  add column if not exists created_at timestamptz not null default now(),
+  add column if not exists updated_at timestamptz not null default now();
 
 update public.profiles p
 set full_name = coalesce(
@@ -143,6 +145,7 @@ create table if not exists public.opportunities (
   description text not null,
   requirements jsonb not null default '[]'::jsonb,
   application_url text not null,
+  is_published boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -155,6 +158,7 @@ alter table public.opportunities
   add column if not exists experience_level text,
   add column if not exists short_description text,
   add column if not exists application_url text,
+  add column if not exists is_published boolean not null default true,
   add column if not exists updated_at timestamptz not null default now();
 
 do $$
@@ -218,7 +222,7 @@ create policy "Anyone can read opportunities"
   on public.opportunities
   for select
   to anon, authenticated
-  using (true);
+  using (is_published = true);
 
 drop policy if exists "Verified providers can publish opportunities" on public.opportunities;
 create policy "Verified providers can publish opportunities"

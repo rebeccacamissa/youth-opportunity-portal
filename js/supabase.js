@@ -119,6 +119,10 @@ async function refreshPortalAuth(user) {
     } else {
       window.portalProfile = data;
     }
+
+    if (['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
+      await syncGuestSavedOpportunities(user.id);
+    }
   }
 
   renderAuthNavigation(window.portalUser, window.portalProfile);
@@ -367,7 +371,13 @@ function initAuthForms() {
         throw new Error('Choose a valid account type.');
       }
       const profileDetails = getStepTwoData();
-      const organizationName = role === 'community_provider' ? profileDetails.organization_name : null;
+      const organizationName = role === 'community_provider'
+        ? String(profileDetails.organization_name || '').trim()
+        : null;
+      if (role === 'community_provider' && !organizationName) {
+        throw new Error('Enter your organization name to register as a community provider.');
+      }
+      if (role === 'community_provider') profileDetails.organization_name = organizationName;
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -440,6 +450,39 @@ async function loadSavedOpportunitiesForCurrentUser() {
     .eq('user_id', window.portalUser.id);
   if (error) throw error;
   return data.map(row => String(row.opportunity_id));
+}
+
+async function syncGuestSavedOpportunities(userId) {
+  if (!supabaseClient || !userId) return false;
+
+  const guestStorageKey = 'youth-portal-saved-opportunities';
+  let guestIds;
+  try {
+    const stored = JSON.parse(localStorage.getItem(guestStorageKey) || '[]');
+    guestIds = Array.isArray(stored) ? [...new Set(stored.map(String))] : [];
+  } catch (error) {
+    console.error('Guest saved opportunities could not be read:', error);
+    return false;
+  }
+
+  if (!guestIds.length) return true;
+
+  const { error } = await supabaseClient
+    .from('user_saved_opportunities')
+    .upsert(guestIds.map(opportunityId => ({ user_id: userId, opportunity_id: opportunityId })), {
+      onConflict: 'user_id,opportunity_id'
+    });
+  if (error) {
+    console.error('Guest saved opportunities could not be synced:', error);
+    return false;
+  }
+
+  try {
+    localStorage.removeItem(guestStorageKey);
+  } catch (storageError) {
+    console.error('Synced guest saved opportunities could not be cleared locally:', storageError);
+  }
+  return true;
 }
 
 async function handleOpportunityPost(event) {
