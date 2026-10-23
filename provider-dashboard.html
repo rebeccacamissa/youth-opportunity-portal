@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Manage your Youth Opportunity Portal listings and provider profile.">
+  <title>Community Provider Dashboard | Youth Opportunity Portal</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body class="provider-dashboard-page">
+  <header>
+    <div class="logo-container">
+      <h2>Youth Opportunity Portal</h2>
+    </div>
+    <button class="nav-toggle" type="button" aria-controls="provider-navigation" aria-expanded="false" aria-label="Open navigation menu">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="provider-navigation" aria-label="Provider navigation">
+      <ul class="provider-dashboard-nav">
+        <li><button type="button" class="dashboard-nav-link is-active" data-dashboard-panel="overview-section" aria-current="page">Dashboard Overview</button></li>
+        <li><button type="button" class="dashboard-nav-link" data-dashboard-panel="manage-listings-section">Manage Listings</button></li>
+        <li><button type="button" class="dashboard-nav-link" data-dashboard-panel="funding-showcase-section">Student Funding Initiatives</button></li>
+        <li><button type="button" class="dashboard-nav-link" data-dashboard-panel="funding-showcase-section" data-dashboard-anchor="business-profile-fields">Business Profile</button></li>
+        <li><button type="button" class="dashboard-nav-link dashboard-nav-primary" data-dashboard-panel="post-opportunity-section">Post Opportunity</button></li>
+        <li><button type="button" class="dashboard-nav-link" id="provider-logout">Log Out</button></li>
+      </ul>
+    </nav>
+  </header>
+
+  <p id="provider-dashboard-error" class="container auth-feedback text-danger" role="alert" hidden></p>
+  <main class="container page-content" id="provider-dashboard" hidden>
+    <header class="page-header">
+      <p class="provider-eyebrow">Community partner workspace</p>
+      <h1>Provider Dashboard</h1>
+      <p id="provider-welcome">Manage your listings, funding initiatives, and business profile.</p>
+    </header>
+
+    <div id="provider-verification-alert" class="provider-alert" role="alert" aria-live="assertive" hidden>
+      Your provider account is pending administrative verification. Opportunity posting is temporarily locked.
+    </div>
+    <div id="provider-toast" class="provider-toast" role="status" aria-live="polite" hidden></div>
+
+    <section id="overview-section" class="provider-panel" aria-labelledby="overview-heading">
+      <div class="provider-section-heading">
+        <div>
+          <p class="provider-eyebrow">At a glance</p>
+          <h2 id="overview-heading">Dashboard Overview</h2>
+        </div>
+        <button type="button" id="refresh-dashboard" class="btn btn-secondary">Refresh</button>
+      </div>
+      <div class="provider-metrics-grid">
+        <article class="provider-metric-card">
+          <p class="provider-metric-label">Total Active Listings</p>
+          <p id="metric-active-listings" class="provider-metric-value" aria-live="polite">—</p>
+        </article>
+        <article class="provider-metric-card">
+          <p class="provider-metric-label">Student Engagement</p>
+          <p id="metric-student-engagement" class="provider-metric-value" aria-live="polite">—</p>
+          <p class="form-text">Saved listings across your opportunities</p>
+        </article>
+        <article class="provider-metric-card">
+          <p class="provider-metric-label">Verification Status</p>
+          <p id="metric-verification" class="provider-status-badge" aria-live="polite">Checking…</p>
+        </article>
+      </div>
+      <div class="provider-panel-actions">
+        <button type="button" class="btn btn-primary" data-dashboard-panel="post-opportunity-section">Post New Opportunity</button>
+        <button type="button" class="btn btn-secondary" data-dashboard-panel="manage-listings-section">Manage Listings</button>
+      </div>
+    </section>
+
+    <section id="post-opportunity-section" class="provider-panel" aria-labelledby="post-opportunity-heading" hidden>
+      <div class="provider-section-heading">
+        <div>
+          <p class="provider-eyebrow">Share a verified opportunity</p>
+          <h2 id="post-opportunity-heading">Post New Opportunity</h2>
+        </div>
+        <button type="button" class="btn btn-secondary" data-dashboard-panel="overview-section">Back to Overview</button>
+      </div>
+      <p id="opportunity-form-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+      <form id="provider-opportunity-form" novalidate>
+        <input type="hidden" id="editing-opportunity-id">
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="opportunity-title">Opportunity Title</label>
+            <input type="text" id="opportunity-title" class="form-control" minlength="5" maxlength="180" required>
+          </div>
+          <div class="form-group">
+            <label for="opportunity-organization">Organization Name</label>
+            <input type="text" id="opportunity-organization" class="form-control" maxlength="180" required readonly>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="opportunity-category">Category</label>
+            <select id="opportunity-category" class="form-control" required>
+              <option value="">Choose a category</option>
+              <option value="learnership">Learnership</option>
+              <option value="bursary">Bursary</option>
+              <option value="internship">Internship</option>
+              <option value="skill-programme">Skill Programme</option>
+              <option value="student-funding-grant">Student Funding Grant</option>
+              <option value="apprenticeship">Apprenticeship</option>
+              <option value="first-job">Entry-Level Job (existing listing)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="opportunity-location">Location</label>
+            <input type="text" id="opportunity-location" class="form-control" maxlength="160" placeholder="Town, province, or remote" required>
+          </div>
+        </div>
+        <div class="grid grid-2">
+          <div class="form-group">
+            <label for="opportunity-closing-date">Closing Date</label>
+            <input type="date" id="opportunity-closing-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="opportunity-application-url">Application Link</label>
+            <input type="url" id="opportunity-application-url" class="form-control" placeholder="https://…" pattern="https://.+" required>
+            <small class="form-text">Use the official HTTPS application link.</small>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="opportunity-description">Description</label>
+          <textarea id="opportunity-description" class="form-control" rows="6" maxlength="10000" placeholder="Describe the opportunity, responsibilities, and what participants can expect." required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="opportunity-requirements">Requirements</label>
+          <textarea id="opportunity-requirements" class="form-control" rows="5" maxlength="5000" placeholder="List each requirement on a separate line." required></textarea>
+        </div>
+        <div class="provider-form-actions">
+          <button type="submit" id="opportunity-submit" class="btn btn-primary">Publish Opportunity</button>
+          <button type="button" id="cancel-opportunity-edit" class="btn btn-secondary" hidden>Cancel Edit</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="manage-listings-section" class="provider-panel" aria-labelledby="manage-listings-heading" hidden>
+      <div class="provider-section-heading">
+        <div>
+          <p class="provider-eyebrow">Your organization’s opportunities</p>
+          <h2 id="manage-listings-heading">Manage Listings</h2>
+        </div>
+        <button type="button" class="btn btn-primary" data-dashboard-panel="post-opportunity-section">Post New Opportunity</button>
+      </div>
+      <p id="listings-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+      <div class="provider-table-wrap">
+        <table class="provider-listings-table">
+          <thead>
+            <tr><th scope="col">Title</th><th scope="col">Category</th><th scope="col">Created</th><th scope="col">Status</th><th scope="col">Actions</th></tr>
+          </thead>
+          <tbody id="provider-listings-body">
+            <tr><td colspan="5">Loading your listings…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="funding-showcase-section" class="provider-panel" aria-labelledby="funding-showcase-heading" hidden>
+      <div class="provider-section-heading">
+        <div>
+          <p class="provider-eyebrow">Invest in the next generation</p>
+          <h2 id="funding-showcase-heading">Student Funding &amp; Business Profile</h2>
+        </div>
+      </div>
+      <p id="provider-profile-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
+      <form id="provider-profile-form">
+        <fieldset class="provider-profile-group">
+          <legend>Student Funding Initiatives</legend>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label for="sponsorship-budget">Sponsorship allocation budget (ZAR)</label>
+              <input type="number" id="sponsorship-budget" class="form-control" min="0" step="0.01" inputmode="decimal">
+            </div>
+            <div class="form-group">
+              <label for="available-slots">Available sponsorship slots</label>
+              <input type="number" id="available-slots" class="form-control" min="0" step="1" inputmode="numeric">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="funding-criteria">Funding criteria notes</label>
+            <textarea id="funding-criteria" class="form-control" rows="4" maxlength="5000"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="eligibility-rules">Scholarship eligibility rules</label>
+            <textarea id="eligibility-rules" class="form-control" rows="4" maxlength="5000"></textarea>
+          </div>
+        </fieldset>
+        <fieldset id="business-profile-fields" class="provider-profile-group">
+          <legend>Business Profile</legend>
+          <div class="form-group">
+            <label for="business-bio">Business bio</label>
+            <textarea id="business-bio" class="form-control" rows="6" maxlength="5000" placeholder="Tell young people about your organization and its work."></textarea>
+          </div>
+        </fieldset>
+        <button type="submit" id="provider-profile-submit" class="btn btn-primary">Save Funding &amp; Business Profile</button>
+      </form>
+    </section>
+  </main>
+
+  <dialog id="delete-listing-dialog" class="provider-confirm-dialog" aria-labelledby="delete-dialog-title">
+    <div class="provider-confirm-content">
+      <h2 id="delete-dialog-title">Delete this listing?</h2>
+      <p>This action cannot be undone.</p>
+      <div class="provider-form-actions">
+        <button type="button" id="confirm-delete-listing" class="btn btn-primary">Delete Listing</button>
+        <button type="button" id="cancel-delete-listing" class="btn btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <footer>
+    <p>&copy; 2026 Youth Opportunity Portal. All information is for demonstration purposes.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./js/supabase.js"></script>
+  <script src="./js/provider.js"></script>
+</body>
+</html>

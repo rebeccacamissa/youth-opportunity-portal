@@ -65,8 +65,10 @@ To configure Supabase features:
 1. Confirm the project URL and browser-safe publishable/anon key in [`js/supabase.js`](./js/supabase.js). Never put a service-role key in client-side code.
 2. Copy `.env.example` to `.env` (or edit the local `.env`) and set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `PORT`.
 3. Run [`supabase/auth_roles_and_saved.sql`](./supabase/auth_roles_and_saved.sql) in the Supabase SQL Editor to create profiles, role-specific profile JSON, auth-user profile creation, saved-opportunity storage, and RLS policies. The script is designed to be rerun and enforces verified-provider access.
-4. Enable email confirmation as appropriate and configure the Supabase Auth redirect/URL allow lists for the local and deployed site.
-5. Verify provider organisations manually in the Supabase SQL Editor after review, using the commented update query at the end of the auth migration. Provider registration never grants verification or publishing rights by itself.
+4. Run [`supabase/opportunity_access_policies.sql`](./supabase/opportunity_access_policies.sql) to enforce published-listing reads and owner-scoped listing and bookmark access.
+5. Run [`supabase/provider_dashboard.sql`](./supabase/provider_dashboard.sql) to create provider funding/business metadata storage and the dashboard engagement metrics function.
+6. Enable email confirmation as appropriate and configure the Supabase Auth redirect/URL allow lists for the local and deployed site.
+7. Verify provider organisations manually in the Supabase SQL Editor after review, using the commented update query at the end of the auth migration. Provider registration never grants verification or publishing rights by itself.
 
 The service-request CRUD endpoint currently uses in-memory storage for learning and local testing: requests are cleared whenever the Node process restarts and are not shared across server instances. Do not use it for production or for sensitive reports without adding durable storage, access control, and abuse protection. Contact requests no longer write to `contact_submissions`; that SQL table remains for deployments that still post to Supabase directly.
 

@@ -2,16 +2,34 @@
 let globalOpportunities = [];
 let revealObserver;
 const savedOpportunityIds = new Set();
+const OPPORTUNITIES_CACHE_KEY = 'youth-portal-opportunities-cache';
+const OPPORTUNITIES_CACHE_TTL = 15 * 60 * 1000;
+const OPPORTUNITY_PAGE_SIZE = 10;
+let remoteOpportunityOffset = 0;
+let hasMoreRemoteOpportunities = false;
+let isLoadingMoreOpportunities = false;
+let homePageInitialized = false;
+let browsePageInitialized = false;
 
 function savedOpportunityStorageKey() {
   return window.portalUser?.id
     ? `youth-portal-saved-opportunities:${window.portalUser.id}`
-    : 'youth-portal-saved-opportunities';
+    : 'guest_bookmarks';
 }
 
 function loadSavedOpportunityIds() {
   try {
-    const stored = JSON.parse(localStorage.getItem(savedOpportunityStorageKey()) || '[]');
+    const key = savedOpportunityStorageKey();
+    const legacyGuestBookmarks = !window.portalUser && localStorage.getItem('youth-portal-saved-opportunities');
+    const stored = JSON.parse(localStorage.getItem(key) || legacyGuestBookmarks || '[]');
+    if (!window.portalUser && legacyGuestBookmarks && !localStorage.getItem(key)) {
+      try {
+        localStorage.setItem(key, legacyGuestBookmarks);
+        localStorage.removeItem('youth-portal-saved-opportunities');
+      } catch (error) {
+        console.error('Guest saved opportunities could not be migrated:', error);
+      }
+    }
     return new Set(Array.isArray(stored) ? stored.map(String) : []);
   } catch (error) {
     console.error('Saved opportunities could not be loaded from local storage:', error);
@@ -46,6 +64,26 @@ async function initializeSavedOpportunities() {
   }
 
   updateSavedCount();
+}
+
+function renderCurrentOpportunityPage(path) {
+  if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
+    if (!homePageInitialized) {
+      homePageInitialized = true;
+      initHomePage();
+    } else {
+      renderHomeOpportunityContent();
+    }
+  } else if (path.endsWith('opportunities.html')) {
+    if (!browsePageInitialized) {
+      browsePageInitialized = true;
+      initBrowsePage();
+    } else {
+      applyFilters();
+    }
+  } else if (path.endsWith('details.html')) {
+    initDetailsPage();
+  }
 }
 
 function initMobileNavigation() {
@@ -351,46 +389,59 @@ async function loadOpportunities() {
 
   if (!usesOpportunityData) return;
 
-  try {
-    const [staticResult, remoteResult] = await Promise.allSettled([
-      loadStaticOpportunities(),
-      loadPublishedOpportunities()
-    ]);
-
-    let staticOpportunities = [];
-    if (staticResult.status === 'fulfilled' && Array.isArray(staticResult.value)) {
-      staticOpportunities = staticResult.value;
-    } else {
-      if (staticResult.status === 'fulfilled') {
-        console.error('Static opportunities could not be loaded: the JSON response was not an array.');
-      } else {
-        console.error('Static opportunities could not be loaded:', staticResult.reason);
-      }
-      const localFallback = window.PORTAL_STATIC_OPPORTUNITIES;
-      if (Array.isArray(localFallback)) {
-        staticOpportunities = localFallback;
-      }
-    }
-
-    const remoteOpportunities = remoteResult.status === 'fulfilled' ? remoteResult.value : [];
-    if (remoteResult.status === 'rejected') console.error('Remote opportunities could not be loaded:', remoteResult.reason);
-    globalOpportunities = [...staticOpportunities, ...remoteOpportunities];
-    if (!globalOpportunities.length && staticResult.status === 'rejected' && remoteResult.status === 'rejected') {
-      throw staticResult.reason;
-    }
-
-    // Determine current page to initialize specific logic
-    if (path.endsWith('index.html') || path === '/' || path.endsWith('/')) {
-      initHomePage();
-    } else if (path.endsWith('opportunities.html')) {
-      initBrowsePage();
-    } else if (path.endsWith('details.html')) {
-      initDetailsPage();
-    }
-  } catch (error) {
-    console.error('Error loading opportunities data:', error);
-    renderErrorMessage();
+  const cached = readOpportunityCache();
+  if (cached) {
+    globalOpportunities = cached.opportunities;
+    remoteOpportunityOffset = cached.remoteCount;
+    hasMoreRemoteOpportunities = cached.hasMore;
+    renderCurrentOpportunityPage(path);
+  } else if (Array.isArray(window.PORTAL_STATIC_OPPORTUNITIES)) {
+    globalOpportunities = window.PORTAL_STATIC_OPPORTUNITIES;
+    renderCurrentOpportunityPage(path);
   }
+
+  const cacheIsFresh = cached && Date.now() - cached.timestamp < OPPORTUNITIES_CACHE_TTL;
+  if (cacheIsFresh) return;
+
+  if (!navigator.onLine) {
+    await loadOfflineOpportunities(path, cached);
+    return;
+  }
+
+  const [staticResult, remoteResult] = await Promise.allSettled([
+    loadStaticOpportunities(),
+    loadPublishedOpportunities(0)
+  ]);
+  const staticOpportunities = getStaticOpportunities(staticResult);
+  const remotePage = remoteResult.status === 'fulfilled' ? remoteResult.value : null;
+
+  if (!remotePage) {
+    if (remoteResult.status === 'rejected') {
+      console.error('Remote opportunities could not be loaded:', remoteResult.reason);
+    }
+    if (!cached) globalOpportunities = staticOpportunities;
+    else globalOpportunities = mergeOpportunities(staticOpportunities, cached.opportunities);
+    remoteOpportunityOffset = cached?.remoteCount || 0;
+    hasMoreRemoteOpportunities = cached?.hasMore || false;
+    renderCurrentOpportunityPage(path);
+    showOpportunityStatus(
+      globalOpportunities.length
+        ? 'Live listings are unavailable. Showing saved or sample opportunities.'
+        : 'Opportunities could not be loaded. Check your connection and try again.',
+      true
+    );
+    if (!globalOpportunities.length) renderErrorMessage();
+    return;
+  }
+
+  globalOpportunities = mergeOpportunities(staticOpportunities, remotePage.opportunities);
+  remoteOpportunityOffset = remotePage.opportunities.length;
+  hasMoreRemoteOpportunities = remotePage.hasMore;
+  writeOpportunityCache();
+  renderCurrentOpportunityPage(path);
+  showOpportunityStatus(staticResult.status === 'rejected' && !staticOpportunities.length
+    ? 'Sample listings could not be loaded; showing available live listings.'
+    : '');
 }
 
 async function loadStaticOpportunities() {
@@ -402,18 +453,125 @@ async function loadStaticOpportunities() {
   return data;
 }
 
-async function loadPublishedOpportunities() {
-  if (!window.supabaseClient) return [];
-
-  const { data, error } = await window.supabaseClient
-    .from('opportunities')
-    .select('*')
-    .eq('is_published', true);
-  if (error) throw error;
-  if (data !== null && !Array.isArray(data)) {
-    throw new Error('Supabase returned an invalid opportunities response.');
+function getStaticOpportunities(result) {
+  if (result.status === 'fulfilled' && Array.isArray(result.value)) return result.value;
+  if (result.status === 'rejected') {
+    console.error('Static opportunities could not be loaded:', result.reason);
   }
-  return (data || []).map(normalizeRemoteOpportunity);
+  const fallback = window.PORTAL_STATIC_OPPORTUNITIES;
+  return Array.isArray(fallback) ? fallback : [];
+}
+
+async function loadOfflineOpportunities(path, cached) {
+  if (cached) {
+    renderCurrentOpportunityPage(path);
+    showOpportunityStatus('You are offline. Showing the last saved opportunity listings.', true);
+    return;
+  }
+
+  const staticResult = await Promise.allSettled([loadStaticOpportunities()]);
+  globalOpportunities = getStaticOpportunities(staticResult[0]);
+  renderCurrentOpportunityPage(path);
+  showOpportunityStatus(globalOpportunities.length
+    ? 'You are offline. Showing sample opportunities.'
+    : 'No saved listings are available offline. Reconnect to load opportunities.',
+  true);
+  if (!globalOpportunities.length) renderErrorMessage();
+}
+
+function readOpportunityCache() {
+  try {
+    const cache = JSON.parse(localStorage.getItem(OPPORTUNITIES_CACHE_KEY) || 'null');
+    if (
+      !cache ||
+      !Number.isFinite(cache.timestamp) ||
+      !Array.isArray(cache.opportunities) ||
+      !Number.isInteger(cache.remoteCount) ||
+      typeof cache.hasMore !== 'boolean'
+    ) return null;
+    return cache;
+  } catch (error) {
+    console.error('Opportunity listings could not be read from local storage:', error);
+    return null;
+  }
+}
+
+function writeOpportunityCache() {
+  try {
+    localStorage.setItem(OPPORTUNITIES_CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      remoteCount: remoteOpportunityOffset,
+      hasMore: hasMoreRemoteOpportunities,
+      opportunities: globalOpportunities
+    }));
+  } catch (error) {
+    console.error('Opportunity listings could not be saved to local storage:', error);
+  }
+}
+
+function mergeOpportunities(staticOpportunities, remoteOpportunities) {
+  const merged = new Map();
+  [...staticOpportunities, ...remoteOpportunities].forEach(item => {
+    merged.set(String(item.id), item);
+  });
+  return [...merged.values()];
+}
+
+async function loadPublishedOpportunities(offset) {
+  if (!window.supabaseClient) {
+    throw new Error('The Supabase client is unavailable. Check the portal configuration.');
+  }
+
+  try {
+    const { data, error } = await window.supabaseClient
+      .from('opportunities')
+      .select('id, title, organization:organization_name, category, location, created_at')
+      .eq('is_published', true)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + OPPORTUNITY_PAGE_SIZE - 1);
+    if (error) throw error;
+    if (data !== null && !Array.isArray(data)) {
+      throw new Error('Supabase returned an invalid opportunities response.');
+    }
+    const rows = data || [];
+    return {
+      opportunities: rows.map(normalizeRemoteOpportunity),
+      hasMore: rows.length === OPPORTUNITY_PAGE_SIZE
+    };
+  } catch (error) {
+    console.error('Supabase opportunity request failed:', error);
+    throw error;
+  }
+}
+
+async function loadMoreOpportunities() {
+  const button = document.getElementById('load-more-opportunities');
+  if (!button || isLoadingMoreOpportunities || !hasMoreRemoteOpportunities) return;
+
+  isLoadingMoreOpportunities = true;
+  button.disabled = true;
+  button.textContent = 'Loading…';
+  showOpportunityStatus('');
+  try {
+    const nextPage = await loadPublishedOpportunities(remoteOpportunityOffset);
+    globalOpportunities = mergeOpportunities(globalOpportunities, nextPage.opportunities);
+    remoteOpportunityOffset += nextPage.opportunities.length;
+    hasMoreRemoteOpportunities = nextPage.hasMore;
+    writeOpportunityCache();
+    applyFilters();
+  } catch (error) {
+    showOpportunityStatus(
+      navigator.onLine
+        ? 'More opportunities could not be loaded. Please try again.'
+        : 'You are offline. Reconnect to load more opportunities.',
+      true
+    );
+  } finally {
+    isLoadingMoreOpportunities = false;
+    button.disabled = !hasMoreRemoteOpportunities;
+    button.textContent = 'Load More';
+    button.hidden = !hasMoreRemoteOpportunities;
+  }
 }
 
 function normalizeRemoteOpportunity(item) {
@@ -426,7 +584,7 @@ function normalizeRemoteOpportunity(item) {
   return {
     ...item,
     id: String(item.id),
-    organization: item.organization_name || item.organization || '',
+    organization: item.organization || item.organization_name || '',
     shortDescription: item.short_description || item.description || '',
     fullDescription: item.description || item.short_description || '',
     applicationLink: item.application_url || item.applicationLink || '',
@@ -438,6 +596,24 @@ function normalizeRemoteOpportunity(item) {
     verifiedStatus: true,
     updatedDate: item.updated_at || item.updatedDate || item.created_at || ''
   };
+}
+
+function showOpportunityStatus(message, isError = false) {
+  const anchor = document.getElementById('opportunities-container') ||
+    document.getElementById('featured-container');
+  if (!anchor) return;
+
+  let status = document.getElementById('opportunity-data-status');
+  if (!status) {
+    status = document.createElement('p');
+    status.id = 'opportunity-data-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    anchor.before(status);
+  }
+  status.className = isError ? 'auth-feedback text-danger' : 'auth-feedback';
+  status.textContent = message;
+  status.hidden = !message;
 }
 
 /**
@@ -477,15 +653,16 @@ function renderErrorMessage() {
  * 2. HOME PAGE LOGIC (index.html)
  */
 async function initHomePage() {
+  renderHomeOpportunityContent();
   await initializeSavedOpportunities();
+  renderHomeOpportunityContent();
+}
 
-  // Keep expired opportunities out of the active featured feed.
+function renderHomeOpportunityContent() {
   const featured = globalOpportunities
     .filter(item => !calculateTimeRemaining(item.closingDate).isExpired)
     .slice(0, 4);
   renderCards(featured, 'featured-container');
-
-  // Render "Closing Soon" widget items
   renderClosingSoonWidget();
 }
 
@@ -493,8 +670,6 @@ async function initHomePage() {
  * 3. BROWSE PAGE LOGIC (opportunities.html)
  */
 async function initBrowsePage() {
-  await initializeSavedOpportunities();
-
   // Check for URL query params passed from Home page (e.g. ?category=internship or ?search=developer)
   const urlParams = new URLSearchParams(window.location.search);
   const searchParam = urlParams.get('search') || '';
@@ -510,11 +685,11 @@ async function initBrowsePage() {
     if (checkbox) checkbox.checked = true;
   }
 
-  // Initial render with potential query filters applied
+  // Render cached results before waiting for account-saved listings.
   applyFilters();
-
-  // Attach event listeners for real-time filtering
   setupFilterEventListeners();
+  await initializeSavedOpportunities();
+  applyFilters();
 }
 
 /**
@@ -614,6 +789,11 @@ function applyFilters() {
 
   // Render cards or empty state
   renderCards(filtered, 'opportunities-container');
+  const loadMoreButton = document.getElementById('load-more-opportunities');
+  if (loadMoreButton) {
+    loadMoreButton.hidden = !hasMoreRemoteOpportunities;
+    loadMoreButton.disabled = !hasMoreRemoteOpportunities || isLoadingMoreOpportunities;
+  }
 }
 
 /**
@@ -905,5 +1085,13 @@ window.loadSavedOpportunitiesForCurrentUser = loadSavedOpportunitiesForCurrentUs
 document.addEventListener('DOMContentLoaded', () => {
   initMotionEffects();
   initSavedOpportunityControls();
+  const loadMoreButton = document.getElementById('load-more-opportunities');
+  if (loadMoreButton) loadMoreButton.addEventListener('click', loadMoreOpportunities);
   loadOpportunities();
+});
+
+document.addEventListener('portal-saved-opportunities-synced', async () => {
+  await initializeSavedOpportunities();
+  if (document.getElementById('opportunities-container')) applyFilters();
+  else refreshSavedOpportunityCards();
 });

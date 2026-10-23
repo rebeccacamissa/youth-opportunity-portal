@@ -1,7 +1,29 @@
 const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jD_L6Kc2wWNecORjKzgkbw_-OXRdxO7';
 window.PORTAL_API_BASE_URL = window.PORTAL_API_BASE_URL || 'http://localhost:5000/api';
-const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) || null;
+const supabaseClient = (() => {
+  if (typeof SUPABASE_URL !== 'string' || !SUPABASE_URL.trim()) {
+    console.error('Supabase is not configured: SUPABASE_URL is missing.');
+    return null;
+  }
+  if (typeof SUPABASE_ANON_KEY !== 'string' || !SUPABASE_ANON_KEY.trim()) {
+    console.error('Supabase is not configured: SUPABASE_ANON_KEY is missing.');
+    return null;
+  }
+  try {
+    const url = new URL(SUPABASE_URL);
+    if (!['https:', 'http:'].includes(url.protocol) || !url.hostname) {
+      throw new Error('SUPABASE_URL must be a valid HTTP or HTTPS URL.');
+    }
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+      throw new Error('The Supabase JavaScript library did not load.');
+    }
+    return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } catch (error) {
+    console.error('Supabase could not be initialized:', error);
+    return null;
+  }
+})();
 
 window.supabaseClient = supabaseClient;
 window.portalUser = null;
@@ -24,19 +46,32 @@ function showAuthFeedback(message, type = '') {
   element.textContent = message;
 }
 
-function safeAuthRedirect(role, verified) {
+function getUserFacingError(error, fallback) {
+  const message = error?.message || '';
+  return /failed to fetch|network|cors|load failed/i.test(message)
+    ? fallback
+    : message || fallback;
+}
+
+function safeAuthRedirect(role) {
+  if (role === 'community_provider') return 'provider-dashboard.html';
+  if (role === 'youth_user') return 'opportunities.html';
+
   const next = new URLSearchParams(window.location.search).get('next');
-  const allowed = new Set(['index.html', 'opportunities.html', 'resources.html', 'contact.html', 'admin-post.html']);
+  const allowed = new Set(['index.html', 'opportunities.html', 'resources.html', 'contact.html', 'admin-post.html', 'provider-dashboard.html']);
   if (next && allowed.has(next)) {
-    if (next !== 'admin-post.html' || (role === 'community_provider' && verified)) return next;
+    if (next !== 'admin-post.html') return next;
   }
-  return role === 'community_provider' && verified ? 'admin-post.html' : 'index.html';
+  return role === 'high_school_student' ? 'opportunities.html' : 'index.html';
 }
 
 function renderAuthNavigation(user, profile) {
   const list = document.querySelector('#portal-navigation ul');
   if (!list) return;
 
+  list.querySelectorAll('[data-provider-management]').forEach(item => {
+    item.hidden = !user || profile?.role !== 'community_provider';
+  });
   list.querySelectorAll('[data-auth-nav]').forEach(item => item.remove());
   const addItem = content => {
     const item = document.createElement('li');
@@ -75,18 +110,17 @@ function renderAuthNavigation(user, profile) {
   identity.append(name, role);
   addItem(identity);
 
-  if (profile?.role === 'community_provider' && profile.is_verified) {
+  if (profile?.role === 'community_provider') {
     const postLink = document.createElement('a');
-    postLink.href = 'admin-post.html';
-    postLink.className = 'nav-auth-link nav-provider-link';
-    postLink.textContent = 'Post New Opportunity';
+    postLink.href = 'provider-dashboard.html';
+    postLink.className = 'nav-auth-link nav-provider-link btn btn-primary';
+    postLink.textContent = profile.is_verified === true ? 'Provider Dashboard' : 'Provider Dashboard (Pending)';
     addItem(postLink);
-  } else if (profile?.role === 'community_provider') {
-    const pending = document.createElement('span');
-    pending.className = 'nav-provider-pending';
-    pending.textContent = 'Verification pending';
-    addItem(pending);
   }
+
+  document.querySelectorAll('#saved-only, .saved-filter-label, [data-youth-only]').forEach(element => {
+    element.hidden = profile?.role === 'community_provider';
+  });
 
   const signOut = document.createElement('button');
   signOut.type = 'button';
@@ -106,26 +140,37 @@ function renderAuthNavigation(user, profile) {
 async function refreshPortalAuth(user) {
   window.portalUser = user || null;
   window.portalProfile = null;
+  let profileLoadFailed = false;
+  let guestBookmarksSyncFailed = false;
 
   if (user && supabaseClient) {
-    const { data, error } = await supabaseClient
-      .from('profiles')
-      .select('id, full_name, email, role, organization_name, is_verified')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Unable to load account profile:', error);
-    } else {
+    try {
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id, full_name, email, role, organization_name, is_verified')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) throw error;
       window.portalProfile = data;
+    } catch (error) {
+      profileLoadFailed = true;
+      console.error('Unable to load account profile:', error);
     }
 
-    if (['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
-      await syncGuestSavedOpportunities(user.id);
+    if (window.portalProfile?.role === 'youth_user') {
+      guestBookmarksSyncFailed = !await syncGuestSavedOpportunities(user.id);
     }
   }
 
   renderAuthNavigation(window.portalUser, window.portalProfile);
+  if (profileLoadFailed || guestBookmarksSyncFailed) {
+    const feedback = document.getElementById('auth-nav-feedback');
+    if (feedback) {
+      feedback.textContent = profileLoadFailed
+        ? 'Your account profile could not be loaded. Check your connection and try again.'
+        : 'Some guest bookmarks could not be synced. They remain saved on this device; try again when connected.';
+    }
+  }
   updateProviderPostingAccess();
   document.dispatchEvent(new CustomEvent('portal-auth-state-change', {
     detail: { user: window.portalUser, profile: window.portalProfile }
@@ -137,12 +182,21 @@ function updateProviderPostingAccess() {
   if (!section) return;
 
   const message = document.getElementById('provider-access-message');
+  const verificationAlert = document.getElementById('provider-verification-alert');
+  const form = document.getElementById('opportunity-post-form');
   const profile = window.portalProfile;
+  const setFormDisabled = disabled => {
+    if (form) form.querySelectorAll('input, select, textarea, button').forEach(control => {
+      control.disabled = disabled;
+    });
+  };
   if (!window.portalUser) {
     if (message) {
       message.className = 'auth-feedback text-danger';
       message.innerHTML = 'Sign in with a verified provider account to post opportunities. <a href="auth.html?mode=signin&next=admin-post.html">Sign in</a>';
     }
+    if (verificationAlert) verificationAlert.hidden = true;
+    setFormDisabled(true);
     section.hidden = true;
     return;
   }
@@ -152,25 +206,37 @@ function updateProviderPostingAccess() {
       message.className = 'auth-feedback text-danger';
       message.textContent = 'This page is available to community opportunity providers. Sign in with a provider account to continue.';
     }
+    if (verificationAlert) verificationAlert.hidden = true;
+    setFormDisabled(true);
     section.hidden = true;
     return;
   }
 
-  if (!profile.is_verified) {
+  const isVerified = profile.is_verified === true;
+  if (!isVerified) {
     if (message) {
       message.className = 'auth-feedback';
-      message.textContent = 'Your provider account is awaiting verification. You will be able to post after an administrator verifies your organization.';
+      message.textContent = '';
     }
-    section.hidden = true;
+    if (verificationAlert) {
+      verificationAlert.textContent = 'Your provider account is pending administrative verification';
+      verificationAlert.hidden = false;
+    }
+    const organization = document.getElementById('provider-organization');
+    if (organization) organization.textContent = profile.organization_name || '';
+    setFormDisabled(true);
+    section.hidden = false;
     return;
   }
 
+  if (verificationAlert) verificationAlert.hidden = true;
   if (message) {
     message.className = 'auth-feedback text-success';
     message.textContent = 'Your provider account is verified. You can publish opportunities for your organization.';
   }
   const organization = document.getElementById('provider-organization');
   if (organization) organization.textContent = profile.organization_name || '';
+  setFormDisabled(false);
   section.hidden = false;
 }
 
@@ -181,12 +247,23 @@ function initAuthState() {
     return;
   }
 
-  supabaseClient.auth.onAuthStateChange((_event, session) => {
-    window.setTimeout(async () => {
-      await refreshPortalAuth(session?.user || null);
-      resolvePortalAuthReady();
-    }, 0);
-  });
+  try {
+    supabaseClient.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(async () => {
+        try {
+          await refreshPortalAuth(session?.user || null);
+        } catch (error) {
+          console.error('Unable to refresh portal authentication state:', error);
+        } finally {
+          resolvePortalAuthReady();
+        }
+      }, 0);
+    });
+  } catch (error) {
+    console.error('Unable to subscribe to portal authentication changes:', error);
+    renderAuthNavigation(null, null);
+    resolvePortalAuthReady();
+  }
 }
 
 function setAuthTab(mode, moveFocus = false) {
@@ -326,23 +403,23 @@ function initAuthForms() {
       if (error) throw error;
       const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
-        .select('role, is_verified')
+        .select('role, is_verified, organization_name')
         .eq('id', data.user.id)
-        .maybeSingle();
+        .single();
       if (profileError) throw profileError;
+      if (!profile) throw new Error('Your account profile could not be found.');
 
-      if (profile?.role === 'community_provider' && !profile.is_verified) {
-        showAuthFeedback('Signed in. Your provider account is awaiting verification before you can post.', 'text-success');
-        window.setTimeout(() => { window.location.href = 'index.html'; }, 1400);
-      } else {
-        showAuthFeedback('Signed in successfully. Redirecting…', 'text-success');
-        window.setTimeout(() => {
-          window.location.href = safeAuthRedirect(profile?.role, profile?.is_verified);
-        }, 700);
-      }
+      const isPendingProvider = profile.role === 'community_provider' && profile.is_verified !== true;
+      showAuthFeedback(
+        isPendingProvider
+          ? 'Signed in. Your account is pending administrative verification.'
+          : 'Signed in successfully. Redirecting…',
+        'text-success'
+      );
+      window.location.replace(safeAuthRedirect(profile.role));
     } catch (error) {
       console.error('Sign in failed:', error);
-      showAuthFeedback(error.message || 'Unable to sign in. Check your details and try again.', 'text-danger');
+      showAuthFeedback(getUserFacingError(error, 'Unable to sign in. Check your details and connection, then try again.'), 'text-danger');
     } finally {
       button.disabled = false;
       button.textContent = 'Sign In';
@@ -408,7 +485,7 @@ function initAuthForms() {
       showSignupSuccess(confirmationMessage);
     } catch (error) {
       console.error('Account registration failed:', error);
-      showAuthFeedback(error.message || 'Unable to create your account. Please try again.', 'text-danger');
+      showAuthFeedback(getUserFacingError(error, 'Unable to create your account. Check your connection and try again.'), 'text-danger');
     } finally {
       button.disabled = false;
       button.textContent = 'Create Account';
@@ -421,21 +498,26 @@ async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
     throw new Error('Sign in with a youth account to sync saved opportunities.');
   }
 
-  if (isSaved) {
-    const { error } = await supabaseClient
-      .from('user_saved_opportunities')
-      .upsert({
-        user_id: window.portalUser.id,
-        opportunity_id: String(opportunityId)
-      }, { onConflict: 'user_id,opportunity_id' });
-    if (error) throw error;
-  } else {
-    const { error } = await supabaseClient
-      .from('user_saved_opportunities')
-      .delete()
-      .eq('user_id', window.portalUser.id)
-      .eq('opportunity_id', String(opportunityId));
-    if (error) throw error;
+  try {
+    if (isSaved) {
+      const { error } = await supabaseClient
+        .from('user_saved_opportunities')
+        .upsert({
+          user_id: window.portalUser.id,
+          opportunity_id: String(opportunityId)
+        }, { onConflict: 'user_id,opportunity_id', ignoreDuplicates: true });
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseClient
+        .from('user_saved_opportunities')
+        .delete()
+        .eq('user_id', window.portalUser.id)
+        .eq('opportunity_id', String(opportunityId));
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error('Saved opportunity request failed:', error);
+    throw error;
   }
   return true;
 }
@@ -444,21 +526,31 @@ async function loadSavedOpportunitiesForCurrentUser() {
   if (!supabaseClient || !window.portalUser || !['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
     throw new Error('Sign in with a youth account to load saved opportunities.');
   }
-  const { data, error } = await supabaseClient
-    .from('user_saved_opportunities')
-    .select('opportunity_id')
-    .eq('user_id', window.portalUser.id);
-  if (error) throw error;
-  return data.map(row => String(row.opportunity_id));
+  try {
+    const { data, error } = await supabaseClient
+      .from('user_saved_opportunities')
+      .select('opportunity_id')
+      .eq('user_id', window.portalUser.id);
+    if (error) throw error;
+    return data.map(row => String(row.opportunity_id));
+  } catch (error) {
+    console.error('Saved opportunities could not be loaded:', error);
+    throw error;
+  }
 }
 
 async function syncGuestSavedOpportunities(userId) {
   if (!supabaseClient || !userId) return false;
 
-  const guestStorageKey = 'youth-portal-saved-opportunities';
+  const guestStorageKey = 'guest_bookmarks';
+  const legacyGuestStorageKey = 'youth-portal-saved-opportunities';
   let guestIds;
   try {
-    const stored = JSON.parse(localStorage.getItem(guestStorageKey) || '[]');
+    const stored = JSON.parse(
+      localStorage.getItem(guestStorageKey) ||
+      localStorage.getItem(legacyGuestStorageKey) ||
+      '[]'
+    );
     guestIds = Array.isArray(stored) ? [...new Set(stored.map(String))] : [];
   } catch (error) {
     console.error('Guest saved opportunities could not be read:', error);
@@ -467,21 +559,26 @@ async function syncGuestSavedOpportunities(userId) {
 
   if (!guestIds.length) return true;
 
-  const { error } = await supabaseClient
-    .from('user_saved_opportunities')
-    .upsert(guestIds.map(opportunityId => ({ user_id: userId, opportunity_id: opportunityId })), {
-      onConflict: 'user_id,opportunity_id'
-    });
-  if (error) {
+  try {
+    const { error } = await supabaseClient
+      .from('user_saved_opportunities')
+      .upsert(
+        guestIds.map(opportunityId => ({ user_id: userId, opportunity_id: opportunityId })),
+        { onConflict: 'user_id,opportunity_id', ignoreDuplicates: true }
+      );
+    if (error) throw error;
+  } catch (error) {
     console.error('Guest saved opportunities could not be synced:', error);
     return false;
   }
 
   try {
     localStorage.removeItem(guestStorageKey);
+    localStorage.removeItem(legacyGuestStorageKey);
   } catch (storageError) {
     console.error('Synced guest saved opportunities could not be cleared locally:', storageError);
   }
+  document.dispatchEvent(new CustomEvent('portal-saved-opportunities-synced'));
   return true;
 }
 
@@ -492,7 +589,7 @@ async function handleOpportunityPost(event) {
   const button = form.querySelector('button[type="submit"]');
   const profile = window.portalProfile;
 
-  if (!supabaseClient || !window.portalUser || profile?.role !== 'community_provider' || !profile.is_verified) {
+  if (!supabaseClient || !window.portalUser || profile?.role !== 'community_provider' || profile.is_verified !== true) {
     feedback.className = 'auth-feedback text-danger';
     feedback.textContent = 'Only signed-in, verified community providers may publish opportunities.';
     return;
@@ -531,7 +628,7 @@ async function handleOpportunityPost(event) {
   } catch (error) {
     console.error('Opportunity publication failed:', error);
     feedback.className = 'auth-feedback text-danger';
-    feedback.textContent = error.message || 'Unable to publish this opportunity. Please try again.';
+    feedback.textContent = getUserFacingError(error, 'Unable to publish this opportunity. Check your connection and try again.');
   } finally {
     button.disabled = false;
     button.textContent = 'Publish opportunity';
@@ -572,7 +669,7 @@ async function handleContactSubmission(event) {
   } catch (error) {
     console.error('Contact form submission failed:', error);
     feedbackEl.className = 'mb-3 text-danger';
-    feedbackEl.textContent = error.message || 'We could not submit your message. Please try again later.';
+    feedbackEl.textContent = getUserFacingError(error, 'We could not submit your message. Check your connection and try again.');
   } finally {
     submitButton.disabled = false;
   }
@@ -594,9 +691,10 @@ document.addEventListener('click', async event => {
     window.location.href = 'index.html';
   } catch (error) {
     console.error('Sign out failed:', error);
-    signOutButton.disabled = false;
     const feedback = document.getElementById('auth-nav-feedback');
     if (feedback) feedback.textContent = 'Unable to sign out. Please try again.';
+  } finally {
+    if (document.contains(signOutButton)) signOutButton.disabled = false;
   }
 });
 

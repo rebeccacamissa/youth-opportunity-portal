@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Post an Opportunity | Youth Opportunity Portal</title>
   <link rel="stylesheet" href="./css/style.css">
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      await window.portalAuthReady;
+      if (!window.portalUser) {
+        window.location.replace('auth.html?mode=signin&next=admin-post.html');
+      } else if (window.portalProfile?.role !== 'community_provider') {
+        window.location.replace('opportunities.html');
+      }
+    });
+  </script>
 </head>
 <body>
   <header>
@@ -33,6 +43,7 @@
     <section class="admin-card mt-4" id="admin-post-section" hidden>
       <h2>Post a New Opportunity</h2>
       <p id="provider-organization" class="text-muted"></p>
+      <p id="provider-verification-alert" class="alert alert-warning" role="alert" hidden></p>
       <p id="post-feedback" class="auth-feedback" role="status" aria-live="polite"></p>
 
       <form id="opportunity-post-form">
