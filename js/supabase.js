@@ -1,7 +1,8 @@
 const SUPABASE_URL = 'https://gznwogkctpxffmfowntp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_jD_L6Kc2wWNecORjKzgkbw_-OXRdxO7';
+const PORTAL_DEMO_MODE = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 window.PORTAL_API_BASE_URL = window.PORTAL_API_BASE_URL || 'http://localhost:5000/api';
-const supabaseClient = (() => {
+const supabaseClient = PORTAL_DEMO_MODE ? null : (() => {
   if (typeof SUPABASE_URL !== 'string' || !SUPABASE_URL.trim()) {
     console.error('Supabase is not configured: SUPABASE_URL is missing.');
     return null;
@@ -26,6 +27,7 @@ const supabaseClient = (() => {
 })();
 
 window.supabaseClient = supabaseClient;
+window.PORTAL_DEMO_MODE = PORTAL_DEMO_MODE;
 window.portalUser = null;
 window.portalProfile = null;
 
@@ -63,6 +65,48 @@ function safeAuthRedirect(role) {
     if (next !== 'admin-post.html') return next;
   }
   return role === 'high_school_student' ? 'opportunities.html' : 'index.html';
+}
+
+function readDemoUsers() {
+  try {
+    const users = JSON.parse(localStorage.getItem('portal_users') || '[]');
+    if (!Array.isArray(users)) throw new Error('Saved demo accounts have an invalid format.');
+    const sanitizedUsers = users.map(user => ({
+      id: String(user.id || ''),
+      email: String(user.email || ''),
+      full_name: String(user.full_name || ''),
+      role: String(user.role || ''),
+      organization_name: user.organization_name || null,
+      is_verified: user.is_verified === true,
+      profile_details: user.profile_details && typeof user.profile_details === 'object'
+        ? user.profile_details
+        : {}
+    }));
+    localStorage.setItem('portal_users', JSON.stringify(sanitizedUsers));
+    return sanitizedUsers;
+  } catch (error) {
+    console.error('Local demo accounts could not be loaded:', error);
+    throw new Error('Local demo accounts could not be loaded. Clear the portal demo storage and try again.');
+  }
+}
+
+function saveDemoSession(user) {
+  const demoUser = {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name || '',
+    role: user.role,
+    organization_name: user.organization_name || null,
+    is_verified: user.is_verified === true,
+    profile_details: user.profile_details || {}
+  };
+  try {
+    localStorage.setItem('current_user', JSON.stringify(demoUser));
+  } catch (error) {
+    console.error('Local demo session could not be saved:', error);
+    throw new Error('Your demo session could not be saved in this browser.');
+  }
+  return demoUser;
 }
 
 function renderAuthNavigation(user, profile) {
@@ -241,6 +285,30 @@ function updateProviderPostingAccess() {
 }
 
 function initAuthState() {
+  if (PORTAL_DEMO_MODE) {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('current_user') || 'null');
+      if (storedUser && typeof storedUser.id === 'string' && typeof storedUser.role === 'string') {
+        window.portalUser = {
+          id: storedUser.id,
+          email: storedUser.email,
+          user_metadata: { full_name: storedUser.full_name }
+        };
+        window.portalProfile = storedUser;
+      }
+    } catch (error) {
+      console.error('Local demo session could not be loaded:', error);
+      localStorage.removeItem('current_user');
+    }
+    renderAuthNavigation(window.portalUser, window.portalProfile);
+    updateProviderPostingAccess();
+    document.dispatchEvent(new CustomEvent('portal-auth-state-change', {
+      detail: { user: window.portalUser, profile: window.portalProfile, demo: true }
+    }));
+    resolvePortalAuthReady();
+    return;
+  }
+
   if (!supabaseClient) {
     renderAuthNavigation(null, null);
     resolvePortalAuthReady();
@@ -381,6 +449,18 @@ function initAuthForms() {
 
   const mode = new URLSearchParams(window.location.search).get('mode');
   setAuthTab(mode === 'signup' ? 'signup' : 'signin');
+  const demoNotice = document.getElementById('local-demo-notice');
+  if (demoNotice) demoNotice.hidden = !PORTAL_DEMO_MODE;
+  const signinPassword = document.getElementById('signin-password');
+  const signupPassword = document.getElementById('signup-password');
+  if (PORTAL_DEMO_MODE && signinPassword) {
+    signinPassword.required = false;
+    signinPassword.autocomplete = 'off';
+  }
+  if (PORTAL_DEMO_MODE && signupPassword) {
+    signupPassword.required = false;
+    signupPassword.autocomplete = 'off';
+  }
 
   signinForm.addEventListener('submit', async event => {
     event.preventDefault();
@@ -396,8 +476,20 @@ function initAuthForms() {
 
     try {
       const formData = new FormData(signinForm);
+      const email = String(formData.get('email')).trim().toLowerCase();
+      if (PORTAL_DEMO_MODE) {
+        const account = readDemoUsers().find(user =>
+          String(user.email || '').trim().toLowerCase() === email
+        );
+        if (!account) throw new Error('No local demo account was found for that email. Register an account on this device first.');
+        const currentUser = saveDemoSession(account);
+        showAuthFeedback('Demo sign-in successful. Redirecting…', 'text-success');
+        window.location.replace(safeAuthRedirect(currentUser.role));
+        return;
+      }
+
       const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email: String(formData.get('email')).trim(),
+        email,
         password: String(formData.get('password'))
       });
       if (error) throw error;
@@ -455,6 +547,34 @@ function initAuthForms() {
         throw new Error('Enter your organization name to register as a community provider.');
       }
       if (role === 'community_provider') profileDetails.organization_name = organizationName;
+      if (PORTAL_DEMO_MODE) {
+        const users = readDemoUsers();
+        if (users.some(user => String(user.email || '').trim().toLowerCase() === email.toLowerCase())) {
+          throw new Error('A local demo account already exists for this email.');
+        }
+        const demoUser = {
+          id: window.crypto?.randomUUID?.() || `demo-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          full_name: fullName,
+          email,
+          role,
+          organization_name: organizationName,
+          is_verified: true,
+          profile_details: profileDetails
+        };
+        try {
+          localStorage.setItem('portal_users', JSON.stringify([...users, demoUser]));
+        } catch (error) {
+          console.error('Local demo account could not be saved:', error);
+          throw new Error('Your demo account could not be saved in this browser.');
+        }
+        saveDemoSession(demoUser);
+        showSignupSuccess('Demo account created on this device. Passwords are not saved or checked in local demo mode.');
+        window.setTimeout(() => {
+          window.location.replace(safeAuthRedirect(role));
+        }, 700);
+        return;
+      }
+
       const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
@@ -495,6 +615,9 @@ function initAuthForms() {
 
 async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
   if (!supabaseClient || !window.portalUser || !['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
+    if (PORTAL_DEMO_MODE && window.portalUser && ['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
+      return true;
+    }
     throw new Error('Sign in with a youth account to sync saved opportunities.');
   }
 
@@ -523,6 +646,14 @@ async function saveOpportunityForCurrentUser(opportunityId, isSaved) {
 }
 
 async function loadSavedOpportunitiesForCurrentUser() {
+  if (PORTAL_DEMO_MODE && window.portalUser && ['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
+    try {
+      return JSON.parse(localStorage.getItem(`youth-portal-saved-opportunities:${window.portalUser.id}`) || '[]').map(String);
+    } catch (error) {
+      console.error('Local demo saved opportunities could not be loaded:', error);
+      throw new Error('Saved opportunities could not be loaded from this browser.');
+    }
+  }
   if (!supabaseClient || !window.portalUser || !['high_school_student', 'youth_user'].includes(window.portalProfile?.role)) {
     throw new Error('Sign in with a youth account to load saved opportunities.');
   }
@@ -540,6 +671,23 @@ async function loadSavedOpportunitiesForCurrentUser() {
 }
 
 async function syncGuestSavedOpportunities(userId) {
+  if (PORTAL_DEMO_MODE) {
+    try {
+      const guestIds = JSON.parse(localStorage.getItem('guest_bookmarks') || '[]');
+      if (!Array.isArray(guestIds)) throw new Error('Guest bookmarks have an invalid format.');
+      const key = `youth-portal-saved-opportunities:${userId}`;
+      const userIds = JSON.parse(localStorage.getItem(key) || '[]');
+      const merged = [...new Set([...userIds, ...guestIds].map(String))];
+      localStorage.setItem(key, JSON.stringify(merged));
+      localStorage.removeItem('guest_bookmarks');
+      localStorage.removeItem('youth-portal-saved-opportunities');
+      document.dispatchEvent(new CustomEvent('portal-saved-opportunities-synced'));
+      return true;
+    } catch (error) {
+      console.error('Local demo bookmarks could not be synced:', error);
+      return false;
+    }
+  }
   if (!supabaseClient || !userId) return false;
 
   const guestStorageKey = 'guest_bookmarks';
@@ -679,13 +827,18 @@ document.addEventListener('click', async event => {
   if (!(event.target instanceof Element)) return;
   const signOutButton = event.target.closest('[data-sign-out]');
   if (!signOutButton) return;
-  if (!supabaseClient) {
+  if (!PORTAL_DEMO_MODE && !supabaseClient) {
     console.error('Sign out unavailable: Supabase client is not initialized.');
     return;
   }
 
   signOutButton.disabled = true;
   try {
+    if (PORTAL_DEMO_MODE) {
+      localStorage.removeItem('current_user');
+      window.location.replace('index.html');
+      return;
+    }
     const { error } = await supabaseClient.auth.signOut();
     if (error) throw error;
     window.location.href = 'index.html';

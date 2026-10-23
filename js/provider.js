@@ -16,6 +16,40 @@
   let opportunityToDelete = null;
   let toastTimeout;
 
+  function readLocalDemoData(key, fallback) {
+    try {
+      const value = JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+      if (value === null || typeof value !== typeof fallback) {
+        throw new Error(`The local demo data for ${key} has an invalid format.`);
+      }
+      return value;
+    } catch (error) {
+      logProviderError(`read local demo data (${key})`, error);
+      throw new Error('Dashboard demo data could not be read from this browser.');
+    }
+  }
+
+  function writeLocalDemoData(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      logProviderError(`write local demo data (${key})`, error);
+      throw new Error('Dashboard demo data could not be saved in this browser.');
+    }
+  }
+
+  function localDemoListings() {
+    const listings = readLocalDemoData('portal_demo_opportunities', []);
+    return listings.filter(listing => listing.owner_id === currentUser.id);
+  }
+
+  function saveLocalDemoListings(ownerListings) {
+    const listings = readLocalDemoData('portal_demo_opportunities', [])
+      .filter(listing => listing.owner_id !== currentUser.id);
+    writeLocalDemoData('portal_demo_opportunities', [...listings, ...ownerListings]);
+    localStorage.removeItem('youth-portal-opportunities-cache');
+  }
+
   function logProviderError(action, error) {
     console.error(`[provider-dashboard] ${action} failed`, {
       message: error?.message || String(error),
@@ -167,6 +201,14 @@
   async function fetchListings() {
     showInlineFeedback('listings-feedback', 'Loading your listings…');
     try {
+      if (window.PORTAL_DEMO_MODE) {
+        const listings = localDemoListings().sort((left, right) =>
+          new Date(right.created_at) - new Date(left.created_at)
+        );
+        renderListings(listings);
+        showInlineFeedback('listings-feedback', '');
+        return;
+      }
       const { data, error } = await client
         .from('opportunities')
         .select('id, title, category, created_at, is_published, organization_name, location, closing_date, description, requirements, application_url')
@@ -187,6 +229,23 @@
 
   async function fetchMetrics() {
     try {
+      if (window.PORTAL_DEMO_MODE) {
+        const listings = localDemoListings();
+        const activeListings = listings.filter(listing =>
+          listing.is_published === true && listing.closing_date >= localDateString()
+        );
+        const listingIds = new Set(listings.map(listing => String(listing.id)));
+        let engagement = 0;
+        for (let index = 0; index < localStorage.length; index += 1) {
+          const key = localStorage.key(index);
+          if (!key || !key.startsWith('youth-portal-saved-opportunities:')) continue;
+          const savedIds = readLocalDemoData(key, []);
+          engagement += savedIds.filter(id => listingIds.has(String(id))).length;
+        }
+        document.getElementById('metric-active-listings').textContent = String(activeListings.length);
+        document.getElementById('metric-student-engagement').textContent = String(engagement);
+        return;
+      }
       const { data, error } = await client.rpc('provider_dashboard_metrics');
       if (error) throw error;
       const metrics = Array.isArray(data) ? data[0] : data;
@@ -224,13 +283,19 @@
 
   async function fetchListingForEdit(listingId) {
     try {
-      const { data, error } = await client
-        .from('opportunities')
-        .select('id, title, category, organization_name, location, closing_date, description, requirements, application_url')
-        .eq('id', listingId)
-        .eq('owner_id', currentUser.id)
-        .single();
-      if (error) throw error;
+      let data;
+      if (window.PORTAL_DEMO_MODE) {
+        data = localDemoListings().find(listing => String(listing.id) === String(listingId));
+      } else {
+        const result = await client
+          .from('opportunities')
+          .select('id, title, category, organization_name, location, closing_date, description, requirements, application_url')
+          .eq('id', listingId)
+          .eq('owner_id', currentUser.id)
+          .single();
+        if (result.error) throw result.error;
+        data = result.data;
+      }
       if (!data) throw new Error('The selected listing could not be found.');
 
       document.getElementById('editing-opportunity-id').value = data.id;
@@ -296,15 +361,31 @@
     try {
       const payload = getOpportunityPayload();
       const editingId = document.getElementById('editing-opportunity-id').value;
-      const result = editingId
-        ? await client.from('opportunities').update(payload).eq('id', editingId).eq('owner_id', currentUser.id).select('id').single()
-        : await client.from('opportunities').insert({
-          ...payload,
-          owner_id: currentUser.id,
-          is_published: true,
-          created_at: new Date().toISOString()
-        }).select('id').single();
-      if (result.error) throw result.error;
+      if (window.PORTAL_DEMO_MODE) {
+        const listings = localDemoListings();
+        const updatedListings = editingId
+          ? listings.map(listing => String(listing.id) === editingId
+            ? { ...listing, ...payload, updated_at: new Date().toISOString() }
+            : listing)
+          : [...listings, {
+            ...payload,
+            id: window.crypto?.randomUUID?.() || `demo-listing-${Date.now()}`,
+            owner_id: currentUser.id,
+            is_published: true,
+            created_at: new Date().toISOString()
+          }];
+        saveLocalDemoListings(updatedListings);
+      } else {
+        const result = editingId
+          ? await client.from('opportunities').update(payload).eq('id', editingId).eq('owner_id', currentUser.id).select('id').single()
+          : await client.from('opportunities').insert({
+            ...payload,
+            owner_id: currentUser.id,
+            is_published: true,
+            created_at: new Date().toISOString()
+          }).select('id').single();
+        if (result.error) throw result.error;
+      }
 
       showInlineFeedback(
         'opportunity-form-feedback',
@@ -334,12 +415,18 @@
 
     setBusy(confirmButton, true, 'Deleting…');
     try {
-      const { error } = await client
-        .from('opportunities')
-        .delete()
-        .eq('id', listingId)
-        .eq('owner_id', currentUser.id);
-      if (error) throw error;
+      if (window.PORTAL_DEMO_MODE) {
+        saveLocalDemoListings(localDemoListings().filter(listing =>
+          String(listing.id) !== String(listingId)
+        ));
+      } else {
+        const { error } = await client
+          .from('opportunities')
+          .delete()
+          .eq('id', listingId)
+          .eq('owner_id', currentUser.id);
+        if (error) throw error;
+      }
       deleteDialog.close();
       opportunityToDelete = null;
       showInlineFeedback('listings-feedback', 'Listing deleted successfully.', 'success');
@@ -358,6 +445,19 @@
   async function fetchProviderProfile() {
     showInlineFeedback('provider-profile-feedback', 'Loading funding and business profile…');
     try {
+      if (window.PORTAL_DEMO_MODE) {
+        const profiles = readLocalDemoData('portal_demo_provider_profiles', {});
+        const data = profiles[currentUser.id];
+        if (data) {
+          document.getElementById('sponsorship-budget').value = data.sponsorship_budget ?? '';
+          document.getElementById('available-slots').value = data.available_slots ?? '';
+          document.getElementById('funding-criteria').value = data.funding_criteria || '';
+          document.getElementById('eligibility-rules').value = data.eligibility_rules || '';
+          document.getElementById('business-bio').value = data.business_bio || '';
+        }
+        showInlineFeedback('provider-profile-feedback', '');
+        return;
+      }
       const { data, error } = await client
         .from('provider_business_profiles')
         .select('sponsorship_budget, available_slots, funding_criteria, eligibility_rules, business_bio')
@@ -395,9 +495,7 @@
         throw new Error('Enter a valid non-negative budget and whole-number slot count.');
       }
 
-      const { error } = await client
-        .from('provider_business_profiles')
-        .upsert({
+      const profileData = {
           user_id: currentUser.id,
           sponsorship_budget: budget,
           available_slots: slots,
@@ -405,8 +503,17 @@
           eligibility_rules: document.getElementById('eligibility-rules').value.trim(),
           business_bio: document.getElementById('business-bio').value.trim(),
           updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-      if (error) throw error;
+      };
+      if (window.PORTAL_DEMO_MODE) {
+        const profiles = readLocalDemoData('portal_demo_provider_profiles', {});
+        profiles[currentUser.id] = profileData;
+        writeLocalDemoData('portal_demo_provider_profiles', profiles);
+      } else {
+        const { error } = await client
+          .from('provider_business_profiles')
+          .upsert(profileData, { onConflict: 'user_id' });
+        if (error) throw error;
+      }
       showInlineFeedback('provider-profile-feedback', 'Funding and business profile saved successfully.', 'success');
       showToast('Funding and business profile saved successfully.');
     } catch (error) {
@@ -423,6 +530,13 @@
     const button = document.getElementById('provider-logout');
     setBusy(button, true, 'Signing out…');
     try {
+      if (window.PORTAL_DEMO_MODE) {
+        localStorage.removeItem('current_user');
+        window.portalUser = null;
+        window.portalProfile = null;
+        window.location.replace('auth.html');
+        return;
+      }
       if (!client) throw new Error('The Supabase client is unavailable.');
       const { error } = await client.auth.signOut();
       if (error) throw error;
@@ -436,26 +550,43 @@
   }
 
   async function authorizeDashboard() {
-    if (!client) {
+    if (!window.PORTAL_DEMO_MODE && !client) {
       window.location.replace('auth.html');
       return;
     }
 
     try {
-      const { data, error } = await client.auth.getSession();
-      if (error) throw error;
-      currentUser = data.session?.user || null;
-      if (!currentUser) {
-        window.location.replace('auth.html');
-        return;
-      }
+      let profile;
+      if (window.PORTAL_DEMO_MODE) {
+        const demoUser = JSON.parse(localStorage.getItem('current_user') || 'null');
+        if (!demoUser?.id) {
+          window.location.replace('auth.html');
+          return;
+        }
+        currentUser = {
+          id: demoUser.id,
+          email: demoUser.email,
+          user_metadata: { full_name: demoUser.full_name }
+        };
+        profile = demoUser;
+        document.getElementById('provider-demo-notice').hidden = false;
+      } else {
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        currentUser = data.session?.user || null;
+        if (!currentUser) {
+          window.location.replace('auth.html');
+          return;
+        }
 
-      const { data: profile, error: profileError } = await client
-        .from('profiles')
-        .select('id, full_name, role, organization_name, is_verified')
-        .eq('id', currentUser.id)
-        .single();
-      if (profileError) throw profileError;
+        const { data: loadedProfile, error: profileError } = await client
+          .from('profiles')
+          .select('id, full_name, role, organization_name, is_verified')
+          .eq('id', currentUser.id)
+          .single();
+        if (profileError) throw profileError;
+        profile = loadedProfile;
+      }
       if (!profile || profile.role !== 'community_provider') {
         window.location.replace('opportunities.html');
         return;

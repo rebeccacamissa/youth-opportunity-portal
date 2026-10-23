@@ -72,6 +72,10 @@ To configure Supabase features:
 
 The service-request CRUD endpoint currently uses in-memory storage for learning and local testing: requests are cleared whenever the Node process restarts and are not shared across server instances. Do not use it for production or for sensitive reports without adding durable storage, access control, and abuse protection. Contact requests no longer write to `contact_submissions`; that SQL table remains for deployments that still post to Supabase directly.
 
+### Local-only account demo
+
+When opened on `localhost`, `127.0.0.1`, or `::1`, the sign-in page uses a browser-local demo mode so role-based pages can be exercised without Supabase Auth. Create a demo account through Sign Up, then sign in using its email address; demo passwords are neither saved nor checked. Provider listings, saved opportunities, and provider funding/profile fields are stored only in that browser. This is a UI test harness, not authentication or a production data store; do not use real personal information. The demo mode is disabled on deployed domains.
+
 Use the REST Client extension with [`requests.http`](./requests.http), or run the examples in Postman. See [`TESTING.md`](./TESTING.md) for the route list and expected responses.
 
 ## Known limitations and next steps

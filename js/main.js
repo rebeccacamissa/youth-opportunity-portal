@@ -518,6 +518,24 @@ function mergeOpportunities(staticOpportunities, remoteOpportunities) {
 }
 
 async function loadPublishedOpportunities(offset) {
+  if (window.PORTAL_DEMO_MODE) {
+    try {
+      const listings = JSON.parse(localStorage.getItem('portal_demo_opportunities') || '[]');
+      if (!Array.isArray(listings)) throw new Error('Local demo opportunities have an invalid format.');
+      const published = listings
+        .filter(item => item.is_published === true)
+        .sort((left, right) => new Date(right.created_at) - new Date(left.created_at));
+      const page = published.slice(offset, offset + OPPORTUNITY_PAGE_SIZE);
+      return {
+        opportunities: page.map(normalizeRemoteOpportunity),
+        hasMore: offset + page.length < published.length
+      };
+    } catch (error) {
+      console.error('Local demo opportunities could not be loaded:', error);
+      throw new Error('Demo opportunities could not be loaded from this browser.');
+    }
+  }
+
   if (!window.supabaseClient) {
     throw new Error('The Supabase client is unavailable. Check the portal configuration.');
   }
